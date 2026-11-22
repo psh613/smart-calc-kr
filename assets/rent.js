@@ -92,7 +92,7 @@
 
     UI.setText('stat-threshold-short', r.thresholdShort > 0
       ? '카드 사용액이 총급여 25%(' + UI.won(r.threshold) + ')에 ' + UI.won(r.thresholdShort) + ' 모자랍니다. 이 상태로는 월세를 현금영수증으로 넣어도 소득공제가 0원입니다.'
-      : '카드 사용액이 총급여 25%(' + UI.won(r.threshold) + ')를 넘어, 월세 ' + UI.won(r.rentExcess) + '가 소득공제 대상에 들어갑니다.');
+      : '카드 사용액이 총급여 25%(' + UI.won(r.threshold) + ')를 넘어, 월세 ' + UI.won(r.rentExcess) + '이 소득공제 대상에 들어갑니다.');
     var limitText;
     if (r.rentDeductionCapped) {
       limitText = '카드 소득공제 한도(' + UI.won(r.cardLimit) + ')가 이미 찼습니다. 그 외 사용액만으로 ' + UI.won(r.otherDeduction) + '을 공제해 월세 몫이 남지 않습니다.';
