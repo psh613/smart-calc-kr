@@ -9,7 +9,7 @@ import re
 import sys
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-BASE = "https://psh613.github.io/smart-calc-kr/"
+BASE = "https://smart-calc-kr.pages.dev/"
 PAGES = ["index.html", "salary.html", "crypto.html", "compound.html", "about.html", "privacy.html"]
 
 problems = []
@@ -80,7 +80,8 @@ for page, scripts in SCRIPT_OF.items():
 # ── 4. 메타데이터 ───────────────────────────────────────────────
 for page in PAGES:
     html = read(page)
-    canonical = BASE if page == "index.html" else BASE + page
+    # Cloudflare Pages는 /page.html 을 /page 로 308 리다이렉트하므로 clean URL을 canonical로 쓴다
+    canonical = BASE if page == "index.html" else BASE + page[:-5]
     check(f"{page} canonical", f'<link rel="canonical" href="{canonical}">' in html, canonical)
     check(f"{page} title", "<title>" in html and "</title>" in html)
     desc = re.search(r'<meta name="description" content="([^"]+)"', html)
@@ -97,7 +98,9 @@ for url in re.findall(r"<loc>([^<]+)</loc>", sitemap):
     if path == "":
         check("사이트맵 루트", True)
     else:
-        check(f"사이트맵 {path}", os.path.exists(os.path.join(ROOT, path)), "파일 없음")
+        # 확장자 없는 clean URL은 같은 이름의 .html 파일을 가리킨다
+        target = path if os.path.splitext(path)[1] else path + ".html"
+        check(f"사이트맵 {path}", os.path.exists(os.path.join(ROOT, target)), "파일 없음")
 check("사이트맵 robots", BASE + "sitemap.xml" in read("robots.txt"))
 check("robots Allow", "Allow: /" in read("robots.txt"))
 

@@ -2,7 +2,7 @@
 
 생활·금융·투자 실용 계산기 모음. 순수 HTML/CSS/JS 정적 사이트로, 빌드 도구가 필요 없습니다.
 
-- 라이브(예정): https://psh613.github.io/smart-calc-kr/
+- 라이브: https://smart-calc-kr.pages.dev/ (Cloudflare Pages)
 - 저장소: https://github.com/psh613/smart-calc-kr
 
 ## 계산기
@@ -46,32 +46,36 @@ python3 -m http.server 8000
 # 브라우저에서 http://localhost:8000
 ```
 
-## GitHub에 올리고 배포하기
+## 배포 (Cloudflare Pages)
 
-1. GitHub에서 `smart-calc-kr` 이름의 **Public** 저장소를 만든다(README 추가하지 않음).
-2. 이 폴더에서:
+빌드 도구가 없는 정적 사이트라 Cloudflare Pages에 저장소를 연결해 두면 `main` 브랜치에 푸시할 때마다 자동으로 다시 배포됩니다.
+
+- 프로젝트: `smart-calc-kr` → https://smart-calc-kr.pages.dev/
+- 설정: 프로덕션 브랜치 `main`, 프레임워크 미리 설정 `없음`, 빌드 명령 비움, 빌드 출력 디렉터리 `/`
 
 ```bash
-git remote add origin https://github.com/psh613/smart-calc-kr.git
-git branch -M main
-git push -u origin main
+git push origin main     # 푸시하면 30초 안에 자동 배포
 ```
 
-3. 저장소 → Settings → Pages → Source: `Deploy from a branch`, Branch: `main` / `/ (root)` → Save.
-4. 1~2분 뒤 https://psh613.github.io/smart-calc-kr/ 가 열린다.
+HTTPS·전 세계 CDN·무료 트래픽 무제한이 기본이고, 나중에 개인 도메인을 붙일 때도 이 저장소 연결은 그대로 씁니다.
+
+`deploy.sh`는 푸시와 배포 확인만 하는 보조 스크립트입니다. (예전 GitHub Pages(`gh-pages`) 배포는 더 이상 쓰지 않습니다.)
 
 ## 커스텀 도메인으로 바꿀 때
 
-`psh613.github.io/smart-calc-kr` 문자열이 들어간 곳은 4종류입니다.
+`smart-calc-kr.pages.dev` 문자열이 들어간 곳은 3종류입니다.
 
 - 각 HTML의 `<link rel="canonical">`, `og:url`, JSON-LD의 `url`
 - `sitemap.xml`의 `<loc>` 6개
 - `robots.txt`의 `Sitemap:` 줄
-- GitHub Pages 설정의 Custom domain (저장소에 `CNAME` 파일도 자동 생성됨)
+
+커스텀 도메인은 Cloudflare Pages 프로젝트 → Custom domains에서 추가합니다(저장소에 `CNAME` 파일은 필요 없음).
 
 ```bash
-grep -rn "psh613.github.io" --include="*.html" --include="*.xml" --include="*.txt" .
+grep -rn "smart-calc-kr.pages.dev" --include="*.html" --include="*.xml" --include="*.txt" .
 ```
+
+메모: Cloudflare Pages는 `/salary.html` 요청을 `/salary`로 **308 리다이렉트**합니다(pretty URL 기본 동작). 그래서 canonical·사이트맵은 확장자 없는 주소를 씁니다.
 
 ## 요율 갱신 위치
 

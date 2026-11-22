@@ -1,24 +1,21 @@
 #!/bin/sh
-# 저장소가 만들어진 뒤 GitHub에 푸시하고 GitHub Pages를 켜는 스크립트.
-# 전제: Pickle의 GitHub 연결에 이 저장소의 Code 쓰기(Contents: Read and write) 권한이 있어야 한다.
+# main 브랜치에 푸시하면 Cloudflare Pages(smart-calc-kr)가 자동으로 빌드·배포한다.
+# 이 스크립트는 푸시 후 배포가 실제로 반영됐는지 확인하는 용도.
 set -e
 cd "$(dirname "$0")"
 
-if ! git remote get-url origin >/dev/null 2>&1; then
-  git remote add origin https://github.com/psh613/smart-calc-kr.git
-fi
-git branch -M main
+BASE="https://smart-calc-kr.pages.dev"
 
-echo "▶ 푸시"
-git push -u origin main
+echo "▶ 테스트"
+python3 tests/test_pages.py
+python3 tests/test_calc.py >/dev/null && echo "  계산 로직 테스트 통과"
 
-echo "▶ GitHub Pages 활성화"
-gh api -X POST repos/psh613/smart-calc-kr/pages \
-  -f build_type=legacy -f 'source[branch]=main' -f 'source[path]=/' >/dev/null 2>&1 \
-  && echo "  Pages 생성 요청 완료" \
-  || echo "  Pages API 실패(이미 활성화되었거나 권한 없음) — 저장소 Settings → Pages에서 main/(root) 선택"
+echo "▶ 푸시 (main → Cloudflare Pages 자동 배포)"
+git push origin main
 
-echo "▶ 20초 뒤 응답 확인"
-sleep 20
-curl -s -o /dev/null -w "  HTTP %{http_code}  https://psh613.github.io/smart-calc-kr/\n" \
-  https://psh613.github.io/smart-calc-kr/
+echo "▶ 30초 뒤 응답 확인"
+sleep 30
+for p in "" salary crypto compound sitemap.xml robots.txt; do
+  printf "  %-14s " "/$p"
+  curl -s -o /dev/null -w "HTTP %{http_code}\n" "$BASE/$p"
+done
