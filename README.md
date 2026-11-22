@@ -85,11 +85,24 @@ grep -rn "smart-calc-kr.pages.dev" --include="*.html" --include="*.xml" --includ
 | --- | --- |
 | `google977142558e07955e.html` | 구글 서치콘솔 `https://smart-calc-kr.pages.dev/` (URL 접두어 속성, `dpdrntld2@gmail.com`) |
 | `naver120c99234bfcbda06c8b128cb4b61e7d.html` | 네이버 서치어드바이저 `https://smart-calc-kr.pages.dev` (`life_hide@naver.com`) |
+| `BingSiteAuth.xml` | Bing 웹마스터 도구 `https://smart-calc-kr.pages.dev/` (XML 파일 확인) |
+| `2f174d526de74e46bef220ae582574e5.txt` | IndexNow API 키 파일 (Bing·api.indexnow.org 실시간 색인 제출용) |
 
-- 두 곳 모두 `https://smart-calc-kr.pages.dev/sitemap.xml`을 제출한 상태입니다.
+- 세 곳 모두 `https://smart-calc-kr.pages.dev/sitemap.xml`을 제출한 상태입니다(Bing은 2026-11-22 Success, 6 URLs 발견).
 - Cloudflare Pages가 `*.html` 요청을 확장자 없는 주소로 308 리다이렉트하지만, 확인 파일은 확장자 없는 주소에서도 같은 내용이 그대로 응답되어 두 엔진 모두 통과했습니다.
 - 예전 GitHub Pages(`psh613.github.io/smart-calc-kr`)는 2026-11-22에 비활성화(Unpublish + Branch None)했습니다.
-- 커스텀 도메인을 붙이면 두 엔진에 **새 주소를 사이트로 다시 추가**하고 소유확인을 새로 해야 합니다(속성별 확인이기 때문).
+- 커스텀 도메인을 붙이면 두 엔진에 **새 주소를 사이트로 다시 추가**하고 소유확인을 새로 해야 합니다(속성별 확인이기 때문). `BingSiteAuth.xml`·IndexNow 키 파일도 새 도메인 기준으로 다시 발급·배치해야 합니다.
+
+### 새 계산기를 배포한 뒤 색인 통보
+
+```bash
+curl -s -o /dev/null -w '%{http_code}\n' -X POST -H 'Content-Type: application/json; charset=utf-8' \
+  --data '{"host":"smart-calc-kr.pages.dev","key":"2f174d526de74e46bef220ae582574e5","keyLocation":"https://smart-calc-kr.pages.dev/2f174d526de74e46bef220ae582574e5.txt","urlList":["https://smart-calc-kr.pages.dev/새주소"]}' \
+  https://www.bing.com/indexnow   # 200 = 접수 (api.indexnow.org로 보내면 202)
+```
+
+- Bing 웹마스터 도구의 `URL Inspection` → `Request indexing`도 함께 쓰면 좋습니다(하루 100 URL 쿼터).
+- `URL Submission` 메뉴는 신규 속성에서 "No pages found"로 비어 있어 IndexNow로 대체했습니다.
 
 ## 요율 갱신 위치
 
