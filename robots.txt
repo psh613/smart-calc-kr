@@ -1,0 +1,5 @@
+User-agent: *
+Allow: /
+
+# 사이트맵 (커스텀 도메인 연결 시 이 줄도 함께 수정)
+Sitemap: https://psh613.github.io/smart-calc-kr/sitemap.xml

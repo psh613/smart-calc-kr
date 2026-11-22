@@ -1,0 +1,237 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>코인 물타기 평단가·선물 청산가 계산기 (2026) — 스마트계산기</title>
+<meta name="description" content="코인 추가 매수 후 평단가(물타기)와 목표가 수익률, 선물 롱·숏 레버리지별 예상 청산가와 손익률을 원·달러로 함께 계산합니다. 유지증거금률을 반영한 격리 마진 기준 청산가를 바로 확인하세요.">
+<link rel="canonical" href="https://psh613.github.io/smart-calc-kr/crypto.html">
+<meta name="robots" content="index,follow">
+<meta property="og:type" content="website">
+<meta property="og:title" content="코인 물타기 평단가·선물 청산가 계산기">
+<meta property="og:description" content="추가 매수 후 평단가와 선물 레버리지별 예상 청산가를 원·달러로 동시에 계산합니다.">
+<meta property="og:url" content="https://psh613.github.io/smart-calc-kr/crypto.html">
+<meta property="og:site_name" content="스마트계산기">
+<meta property="og:locale" content="ko_KR">
+<link rel="icon" href="favicon.svg" type="image/svg+xml">
+<link rel="stylesheet" href="assets/style.css">
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@type": "WebApplication",
+  "name": "코인 물타기 평단가·선물 청산가 계산기",
+  "applicationCategory": "FinanceApplication",
+  "operatingSystem": "All",
+  "inLanguage": "ko",
+  "url": "https://psh613.github.io/smart-calc-kr/crypto.html",
+  "description": "코인 추가 매수 후 평균 단가와 목표가 수익률, 선물 롱·숏 레버리지별 예상 청산가를 계산합니다.",
+  "offers": { "@type": "Offer", "price": "0", "priceCurrency": "KRW" }
+}
+</script>
+</head>
+<body>
+<header class="site-header">
+  <div class="wrap header-inner">
+    <a class="brand" href="index.html"><span class="brand-mark">∑</span>스마트계산기 <span class="thin">smart-calc</span></a>
+    <nav class="site-nav" aria-label="주요 계산기">
+      <a href="index.html">홈</a>
+      <a href="salary.html">연봉 실수령</a>
+      <a href="crypto.html" aria-current="page">코인 계산기</a>
+      <a href="compound.html">복리·적립식</a>
+    </nav>
+  </div>
+</header>
+
+<main class="wrap">
+  <div class="page-head">
+    <span class="eyebrow">현물 · 선물</span>
+    <h1>코인 물타기 &amp; 선물 청산가 계산기</h1>
+    <p class="lede">추가 매수 후 평단가가 얼마로 내려가는지, 레버리지 포지션의 예상 청산가는 어디인지 한 화면에서 확인하세요.</p>
+  </div>
+
+  <section class="card card-tight">
+    <div class="grid-2">
+      <div class="field">
+        <span class="label">통화 단위</span>
+        <div class="segmented" id="currency-seg" role="group" aria-label="통화 단위">
+          <button type="button" data-value="krw" aria-pressed="true">원 (₩)</button>
+          <button type="button" data-value="usd" aria-pressed="false">달러 ($)</button>
+        </div>
+      </div>
+      <div class="field">
+        <label for="fx">환율 (1달러 = ? 원)</label>
+        <div class="input-wrap">
+          <input id="fx" class="unit" type="number" inputmode="decimal" min="1" step="10" value="1400">
+          <span class="unit-suffix">원</span>
+        </div>
+        <span class="hint">원·달러 병기 환산에만 쓰입니다. 직접 입력한 값은 이 기기에만 저장됩니다.</span>
+      </div>
+    </div>
+  </section>
+
+  <!-- ① 물타기 -->
+  <h2>① 현물 물타기 — 추가 매수 후 평단가</h2>
+  <section class="card">
+    <div class="grid-2">
+      <div class="field">
+        <label for="avg-price">기존 평단가</label>
+        <div class="input-wrap"><input id="avg-price" type="number" inputmode="decimal" min="0" step="any" value="15000000"><span class="unit-suffix" id="cur1">원</span></div>
+      </div>
+      <div class="field">
+        <label for="qty">기존 보유 수량</label>
+        <div class="input-wrap"><input id="qty" type="number" inputmode="decimal" min="0" step="any" value="1"><span class="unit-suffix">개</span></div>
+      </div>
+    </div>
+
+    <div class="field">
+      <span class="label">추가 매수 입력 방식</span>
+      <div class="segmented" id="add-mode" role="group" aria-label="추가 매수 입력 방식">
+        <button type="button" data-value="amount" aria-pressed="true">매수 금액으로</button>
+        <button type="button" data-value="qty" aria-pressed="false">매수 수량으로</button>
+      </div>
+    </div>
+
+    <div class="grid-2">
+      <div class="field" id="add-amount-field">
+        <label for="add-amount">추가 매수 금액</label>
+        <div class="input-wrap"><input id="add-amount" type="number" inputmode="decimal" min="0" step="any" value="5000000"><span class="unit-suffix" id="cur2">원</span></div>
+      </div>
+      <div class="field" id="add-qty-field" hidden>
+        <label for="add-qty">추가 매수 수량</label>
+        <div class="input-wrap"><input id="add-qty" type="number" inputmode="decimal" min="0" step="any" value="0.5"><span class="unit-suffix">개</span></div>
+      </div>
+      <div class="field">
+        <label for="add-price">추가 매수가</label>
+        <div class="input-wrap"><input id="add-price" type="number" inputmode="decimal" min="0" step="any" value="10000000"><span class="unit-suffix" id="cur3">원</span></div>
+      </div>
+    </div>
+
+    <div class="grid-2">
+      <div class="field">
+        <label for="cur-price">현재가 (선택)</label>
+        <div class="input-wrap"><input id="cur-price" type="number" inputmode="decimal" min="0" step="any" value="11000000"><span class="unit-suffix" id="cur4">원</span></div>
+      </div>
+      <div class="field">
+        <label for="target-price">목표가 (선택)</label>
+        <div class="input-wrap"><input id="target-price" type="number" inputmode="decimal" min="0" step="any" value="16000000"><span class="unit-suffix" id="cur5">원</span></div>
+      </div>
+    </div>
+  </section>
+
+  <section class="result" aria-live="polite" aria-atomic="true">
+    <span class="result-label">추가 매수 후 평단가</span>
+    <strong class="result-value" id="avg-result">—</strong>
+    <span class="result-sub" id="avg-sub">—</span>
+    <div class="result-grid">
+      <div><span>총 보유 수량</span><strong id="total-qty">—</strong></div>
+      <div><span>총 투자금</span><strong id="total-cost">—</strong></div>
+      <div><span>목표가 수익률</span><strong id="target-return">—</strong></div>
+      <div><span>현재가 평가손익</span><strong id="unrealized">—</strong></div>
+    </div>
+  </section>
+
+  <div class="card card-tight">
+    <div class="table-wrap">
+      <table>
+        <thead><tr><th scope="col">구분</th><th scope="col">금액</th><th scope="col">수량</th></tr></thead>
+        <tbody id="avg-rows"></tbody>
+      </table>
+    </div>
+    <p class="data-note">평단가 = (기존 수량 × 기존 평단가 + 추가 수량 × 추가 매수가) ÷ 총 수량. 수수료·슬리피지는 반영하지 않았습니다.</p>
+  </div>
+
+  <!-- ② 선물 청산가 -->
+  <h2>② 선물 — 레버리지별 예상 청산가</h2>
+  <section class="card">
+    <div class="field">
+      <span class="label">포지션 방향</span>
+      <div class="segmented" id="side-seg" role="group" aria-label="포지션 방향">
+        <button type="button" data-value="long" aria-pressed="true">롱 (매수)</button>
+        <button type="button" data-value="short" aria-pressed="false">숏 (매도)</button>
+      </div>
+    </div>
+    <div class="grid-2">
+      <div class="field">
+        <label for="entry">진입가</label>
+        <div class="input-wrap"><input id="entry" type="number" inputmode="decimal" min="0" step="any" value="11000000"><span class="unit-suffix" id="cur6">원</span></div>
+      </div>
+      <div class="field">
+        <label for="leverage">레버리지 (배)</label>
+        <div class="input-wrap"><input id="leverage" type="number" inputmode="decimal" min="1" max="200" step="1" value="10"><span class="unit-suffix">배</span></div>
+      </div>
+      <div class="field">
+        <label for="mmr">유지증거금률</label>
+        <div class="input-wrap"><input id="mmr" type="number" inputmode="decimal" min="0.01" max="50" step="0.1" value="0.5"><span class="unit-suffix">%</span></div>
+        <span class="hint">거래소·포지션 크기별 유지증거금. 보통 0.4~1%입니다.</span>
+      </div>
+      <div class="field">
+        <label for="margin">투자 증거금 (선택)</label>
+        <div class="input-wrap"><input id="margin" type="number" inputmode="decimal" min="0" step="any" value="1000000"><span class="unit-suffix" id="cur7">원</span></div>
+      </div>
+    </div>
+    <div class="field">
+      <label for="fut-target">목표가 (선택)</label>
+      <div class="input-wrap"><input id="fut-target" type="number" inputmode="decimal" min="0" step="any" value="12000000"><span class="unit-suffix" id="cur8">원</span></div>
+    </div>
+  </section>
+
+  <section class="result" aria-live="polite" aria-atomic="true">
+    <span class="result-label">예상 청산가</span>
+    <strong class="result-value" id="liq-result">—</strong>
+    <span class="result-sub" id="liq-sub">—</span>
+    <div class="result-grid">
+      <div><span>포지션 명목가</span><strong id="position-size">—</strong></div>
+      <div><span>진입 수량</span><strong id="fut-qty">—</strong></div>
+      <div><span>목표가 ROI</span><strong id="roi-target">—</strong></div>
+      <div><span>목표가 예상 손익</span><strong id="pnl-target">—</strong></div>
+    </div>
+  </section>
+
+  <div class="card card-tight">
+    <div class="table-wrap">
+      <table>
+        <caption>같은 진입가에서 레버리지별 예상 청산가</caption>
+        <thead><tr><th scope="col">레버리지</th><th scope="col">청산가</th><th scope="col">진입가 대비</th></tr></thead>
+        <tbody id="lev-rows"></tbody>
+      </table>
+    </div>
+    <p class="data-note">롱 청산가 ≈ 진입가 × (1 − 1/레버리지 + 유지증거금률), 숏 청산가 ≈ 진입가 × (1 + 1/레버리지 − 유지증거금률). 거래소의 실제 청산가는 수수료·펀딩비·증거금 모드(교차/격리)·유지증거금 구간에 따라 달라지므로 참고용으로만 쓰세요.</p>
+  </div>
+
+  <h2>자주 묻는 질문</h2>
+  <details class="faq"><summary>물타기 평단가는 어떻게 계산하나요?</summary>
+    <div class="faq-body"><p>기존 보유분의 매입금액과 추가 매수금액을 더한 뒤 총 수량으로 나눕니다. 예를 들어 1,500만원에 1개를 보유한 상태에서 1,000만원에 0.5개를 더 사면 (1,500만 + 500만) ÷ 1.5개 = 1,333만원이 됩니다.</p></div>
+  </details>
+  <details class="faq"><summary>청산가는 왜 레버리지의 역수보다 조금 더 가까운가요?</summary>
+    <div class="faq-body"><p>거래소가 유지증거금을 남겨두기 때문입니다. 10배 롱이면 진입가에서 약 10% 하락할 때 청산되지만, 유지증거금률 0.5%가 더해져 실제로는 약 9.5% 하락 지점에서 청산됩니다.</p></div>
+  </details>
+  <details class="faq"><summary>숏 포지션은 청산가가 위로 생기나요?</summary>
+    <div class="faq-body"><p>네. 숏은 가격이 오를수록 손실이 커지므로 청산가가 진입가 위에 생깁니다. 진입가 × (1 + 1/레버리지 − 유지증거금률)로 계산합니다.</p></div>
+  </details>
+  <details class="faq"><summary>교차 마진에서도 이 계산이 맞나요?</summary>
+    <div class="faq-body"><p>이 계산기는 격리 마진 기준의 근사치입니다. 교차 마진은 지갑 잔고 전체가 증거금으로 쓰여 청산가가 훨씬 멀어지고, 포지션을 여러 개 열면 계산이 달라집니다.</p></div>
+  </details>
+
+  <div class="notice">
+    <strong>투자 유의</strong><br>
+    이 계산기는 수수료·펀딩비·호가 슬리피지를 반영하지 않은 참고용 추정치입니다. 선물 거래는 원금 전액을 잃을 수 있고, 청산가는 거래소 정책에 따라 실시간으로 달라집니다. 투자 판단과 책임은 본인에게 있습니다.
+  </div>
+</main>
+
+<footer class="site-footer">
+  <div class="wrap">
+    <nav class="footer-nav" aria-label="사이트 정보">
+      <a href="index.html">홈</a>
+      <a href="about.html">사이트 소개</a>
+      <a href="privacy.html">개인정보처리방침</a>
+    </nav>
+    <p>스마트계산기 — 생활·금융·투자 계산기를 한 곳에. 모든 계산은 브라우저에서만 이루어지며 입력값은 저장·전송되지 않습니다.</p>
+    <p class="copy">© <span id="year">2026</span> smart-calc-kr · 최종 업데이트 2026-11-22</p>
+  </div>
+</footer>
+
+<script src="assets/calc-core.js"></script>
+<script src="assets/ui.js"></script>
+<script src="assets/crypto.js"></script>
+</body>
+</html>

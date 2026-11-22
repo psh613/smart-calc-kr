@@ -1,0 +1,161 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>적립식 투자·복리 계산기 — 월 적립액으로 최종 자산 계산 | 스마트계산기</title>
+<meta name="description" content="초기 자금과 월 적립액, 연 수익률, 투자 기간을 넣으면 복리로 불어난 최종 자산과 총 납입원금, 평가 수익, 연도별 자산 추이를 표로 보여 줍니다. 적립식 투자(DCA) 계획을 세울 때 바로 확인하세요.">
+<link rel="canonical" href="https://psh613.github.io/smart-calc-kr/compound.html">
+<meta name="robots" content="index,follow">
+<meta property="og:type" content="website">
+<meta property="og:title" content="적립식 투자·복리 계산기 — 월 적립액으로 최종 자산 계산">
+<meta property="og:description" content="월 적립액과 연 수익률로 최종 자산·총 수익·연도별 추이를 계산합니다.">
+<meta property="og:url" content="https://psh613.github.io/smart-calc-kr/compound.html">
+<meta property="og:site_name" content="스마트계산기">
+<meta property="og:locale" content="ko_KR">
+<link rel="icon" href="favicon.svg" type="image/svg+xml">
+<link rel="stylesheet" href="assets/style.css">
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@type": "WebApplication",
+  "name": "적립식 투자·복리 계산기",
+  "applicationCategory": "FinanceApplication",
+  "operatingSystem": "All",
+  "inLanguage": "ko",
+  "url": "https://psh613.github.io/smart-calc-kr/compound.html",
+  "description": "초기 자금·월 적립액·연 수익률·기간으로 복리 최종 자산과 연도별 추이를 계산합니다.",
+  "offers": { "@type": "Offer", "price": "0", "priceCurrency": "KRW" }
+}
+</script>
+</head>
+<body>
+<header class="site-header">
+  <div class="wrap header-inner">
+    <a class="brand" href="index.html"><span class="brand-mark">∑</span>스마트계산기 <span class="thin">smart-calc</span></a>
+    <nav class="site-nav" aria-label="주요 계산기">
+      <a href="index.html">홈</a>
+      <a href="salary.html">연봉 실수령</a>
+      <a href="crypto.html">코인 계산기</a>
+      <a href="compound.html" aria-current="page">복리·적립식</a>
+    </nav>
+  </div>
+</header>
+
+<main class="wrap">
+  <div class="page-head">
+    <span class="eyebrow">적립식 투자 (DCA)</span>
+    <h1>적립식 투자 · 복리 계산기</h1>
+    <p class="lede">매달 같은 금액을 꾸준히 넣었을 때, 복리로 자산이 얼마까지 불어나는지 계산합니다. 월 복리 기준입니다.</p>
+  </div>
+
+  <section class="card">
+    <div class="grid-2">
+      <div class="field">
+        <label for="initial">초기 자금</label>
+        <div class="input-wrap"><input id="initial" class="unit" type="number" inputmode="numeric" min="0" step="100000" value="1000000"><span class="unit-suffix">원</span></div>
+        <span class="hint">처음에 넣어두는 목돈. 없으면 0.</span>
+      </div>
+      <div class="field">
+        <label for="monthly">월 적립액</label>
+        <div class="input-wrap"><input id="monthly" class="unit" type="number" inputmode="numeric" min="0" step="10000" value="500000"><span class="unit-suffix">원</span></div>
+        <div class="chips" id="monthly-presets" role="group" aria-label="월 적립액 빠른 선택">
+          <button class="chip" type="button" data-value="100000">10만</button>
+          <button class="chip" type="button" data-value="300000">30만</button>
+          <button class="chip" type="button" data-value="500000">50만</button>
+          <button class="chip" type="button" data-value="1000000">100만</button>
+        </div>
+      </div>
+      <div class="field">
+        <label for="rate">연 수익률</label>
+        <div class="input-wrap"><input id="rate" class="unit" type="number" inputmode="decimal" min="-99" max="100" step="0.1" value="7"><span class="unit-suffix">%</span></div>
+        <span class="hint">물가상승률을 뺀 실질 수익률로 넣으면 더 현실적입니다.</span>
+      </div>
+      <div class="field">
+        <label for="years">투자 기간</label>
+        <div class="input-wrap"><input id="years" class="unit" type="number" inputmode="numeric" min="1" max="60" step="1" value="20"><span class="unit-suffix">년</span></div>
+        <div class="chips" id="years-presets" role="group" aria-label="투자 기간 빠른 선택">
+          <button class="chip" type="button" data-value="5">5년</button>
+          <button class="chip" type="button" data-value="10">10년</button>
+          <button class="chip" type="button" data-value="20">20년</button>
+          <button class="chip" type="button" data-value="30">30년</button>
+        </div>
+      </div>
+    </div>
+    <div class="field">
+      <span class="label">적립 시점</span>
+      <div class="segmented" id="timing-seg" role="group" aria-label="적립 시점">
+        <button type="button" data-value="start" aria-pressed="true">매월 초 (월급날 바로)</button>
+        <button type="button" data-value="end" aria-pressed="false">매월 말</button>
+      </div>
+    </div>
+  </section>
+
+  <section class="result" aria-live="polite" aria-atomic="true">
+    <span class="result-label">최종 예상 자산</span>
+    <strong class="result-value" id="final">—</strong>
+    <span class="result-sub" id="final-sub">—</span>
+    <div class="result-grid">
+      <div><span>총 납입원금</span><strong id="principal">—</strong></div>
+      <div><span>평가 수익</span><strong id="profit">—</strong></div>
+      <div><span>총 수익률</span><strong id="return-rate">—</strong></div>
+      <div><span>원금 대비</span><strong id="multiple">—</strong></div>
+    </div>
+  </section>
+
+  <section class="card" aria-labelledby="table-title">
+    <h2 id="table-title" style="margin-top:0">연도별 자산 추이</h2>
+    <div class="table-wrap">
+      <table>
+        <thead>
+          <tr><th scope="col">연차</th><th scope="col">납입원금</th><th scope="col">평가금액</th><th scope="col">수익</th></tr>
+        </thead>
+        <tbody id="year-rows"></tbody>
+      </table>
+    </div>
+    <p class="data-note">연 수익률을 월 복리로 환산(월 수익률 = (1+연 수익률)^(1/12) − 1)해 매달 계산했습니다. 세금(15.4%)과 수수료, 수익률 변동은 반영하지 않았습니다.</p>
+  </section>
+
+  <h2>계산 결과 읽는 법</h2>
+  <div class="card card-tight">
+    <p><strong>총 납입원금</strong>은 내가 실제로 넣은 돈(초기 자금 + 월 적립액 × 개월 수)입니다. <strong>평가 수익</strong>은 복리로 불어난 부분, <strong>총 수익률</strong>은 수익 ÷ 납입원금입니다.</p>
+    <p style="margin-bottom:0">예를 들어 월 50만원을 20년 넣으면 원금은 1억 2,000만원이지만, 연 7% 수익률이 계속된다면 2억 6,000만원 안팎이 됩니다. 기간이 길어질수록 뒤쪽 몇 년의 수익이 원금보다 커지는 것이 복리의 핵심입니다.</p>
+  </div>
+
+  <h2>자주 묻는 질문</h2>
+  <details class="faq"><summary>연 수익률 7%는 현실적인가요?</summary>
+    <div class="faq-body"><p>과거 미국 S&amp;P500의 장기 연평균 수익률이 물가 반영 후 약 6~7% 수준이었습니다. 다만 이는 과거 통계이고 미래 수익을 보장하지 않습니다. 원화 자산과 변동성을 함께 고려해 3~7% 사이로 여러 번 계산해 보는 편이 안전합니다.</p></div>
+  </details>
+  <details class="faq"><summary>월 초와 월 말 적립은 얼마나 차이 나나요?</summary>
+    <div class="faq-body"><p>같은 금액이라도 한 달 일찍 넣으면 그만큼 오래 수익을 내므로 월 초 적립이 조금 유리합니다. 20년 이상 장기에서는 수익률에 따라 몇 % 차이가 납니다.</p></div>
+  </details>
+  <details class="faq"><summary>세금은 어떻게 되나요?</summary>
+    <div class="faq-body"><p>국내 주식·펀드 매도 차익은 대부분 15.4%(소득세 14% + 지방소득세 1.4%)가 적용되고, 해외 주식은 250만원 기본공제 후 22%입니다. 이 계산기는 세전 금액이므로 실제 수령액은 이보다 적습니다.</p></div>
+  </details>
+  <details class="faq"><summary>적립식 투자(DCA)가 유리한 이유는 무엇인가요?</summary>
+    <div class="faq-body"><p>매달 같은 금액을 사면 가격이 높을 때 적게, 낮을 때 많이 사게 되어 평균 매입단가가 낮아지는 효과가 있습니다. 타이밍을 맞추지 않아도 되고 심리적 부담이 적다는 점이 장점입니다.</p></div>
+  </details>
+
+  <div class="notice">
+    <strong>참고용 안내</strong><br>
+    이 계산기는 일정한 수익률이 계속된다고 가정한 단순 모델입니다. 실제 투자에서는 수익률이 매년 달라지고 원금 손실이 발생할 수 있습니다. 투자 판단의 근거로만 참고하세요.
+  </div>
+</main>
+
+<footer class="site-footer">
+  <div class="wrap">
+    <nav class="footer-nav" aria-label="사이트 정보">
+      <a href="index.html">홈</a>
+      <a href="about.html">사이트 소개</a>
+      <a href="privacy.html">개인정보처리방침</a>
+    </nav>
+    <p>스마트계산기 — 생활·금융·투자 계산기를 한 곳에. 모든 계산은 브라우저에서만 이루어지며 입력값은 저장·전송되지 않습니다.</p>
+    <p class="copy">© <span id="year">2026</span> smart-calc-kr · 최종 업데이트 2026-11-22</p>
+  </div>
+</footer>
+
+<script src="assets/calc-core.js"></script>
+<script src="assets/ui.js"></script>
+<script src="assets/compound.js"></script>
+</body>
+</html>
