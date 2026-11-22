@@ -15,9 +15,9 @@
   function otherPrice(v) { return currency === 'krw' ? UI.usd(v, Math.abs(v) < 1 ? 6 : 2) : UI.int(v) + '원'; }
   function qtyText(v) {
     var n = Number(v) || 0;
-    if (n >= 1) return n.toLocaleString('ko-KR', { maximumFractionDigits: 4 });
     if (n === 0) return '0';
-    return n.toLocaleString('en-US', { maximumSignificantDigits: 6 });
+    if (Math.abs(n) >= 1) return UI.dec(n, Math.abs(n) % 1 === 0 ? 0 : 4);
+    return String(Number(n.toPrecision(6)));
   }
 
   function refreshUnits() {

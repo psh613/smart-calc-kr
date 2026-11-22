@@ -15,10 +15,27 @@
     return isFinite(n) ? n : 0;
   }
 
+  /** 1234567 → "1,234,567" (Intl 없이도 동일하게 동작) */
+  function group(str) {
+    var parts = String(str).split('.');
+    parts[0] = parts[0].replace(/\B(?=(\d{3})+(?!\d))/g, ',');
+    return parts.join('.');
+  }
+
   function int(v) {
     var n = Number(v);
     if (!isFinite(n)) return '0';
-    return Math.round(n).toLocaleString('ko-KR');
+    n = Math.round(n);
+    return (n < 0 ? '-' : '') + group(Math.abs(n));
+  }
+
+  /** 소수 자릿수를 유지하면서 천 단위 구분 (decimals 생략 시 자동) */
+  function dec(v, digits) {
+    var n = Number(v);
+    if (!isFinite(n)) n = 0;
+    var d = typeof digits === 'number' ? digits : (Math.abs(n) < 1 ? 4 : 2);
+    var fixed = Math.abs(n).toFixed(d);
+    return (n < 0 ? '-' : '') + group(fixed);
   }
 
   function won(v) { return int(v) + '원'; }
@@ -27,7 +44,7 @@
     var n = Number(v);
     if (!isFinite(n)) n = 0;
     var d = typeof digits === 'number' ? digits : (Math.abs(n) < 1 ? 4 : 2);
-    return '$' + n.toLocaleString('en-US', { minimumFractionDigits: d, maximumFractionDigits: d });
+    return '$' + dec(n, d);
   }
 
   function price(v, currency) {
@@ -117,7 +134,7 @@
   }
 
   root.UI = {
-    $: $, num: num, int: int, won: won, usd: usd, price: price, pct: pct,
+    $: $, num: num, int: int, dec: dec, won: won, usd: usd, price: price, pct: pct,
     getFx: getFx, setFx: setFx, onInput: onInput,
     bindSegmented: bindSegmented, segValue: segValue,
     setText: setText, setHtml: setHtml, setSignClass: setSignClass,
