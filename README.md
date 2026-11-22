@@ -77,6 +77,20 @@ grep -rn "smart-calc-kr.pages.dev" --include="*.html" --include="*.xml" --includ
 
 메모: Cloudflare Pages는 `/salary.html` 요청을 `/salary`로 **308 리다이렉트**합니다(pretty URL 기본 동작). 그래서 canonical·사이트맵은 확장자 없는 주소를 씁니다.
 
+## 검색엔진 등록 (2026-11-22)
+
+루트의 아래 두 파일은 **구글 서치콘솔·네이버 서치어드바이저 소유확인이 끝난 파일**입니다. 지우거나 이름을 바꾸면 소유권 확인이 풀리므로 그대로 두세요.
+
+| 파일 | 용도 |
+| --- | --- |
+| `google977142558e07955e.html` | 구글 서치콘솔 `https://smart-calc-kr.pages.dev/` (URL 접두어 속성, `dpdrntld2@gmail.com`) |
+| `naver120c99234bfcbda06c8b128cb4b61e7d.html` | 네이버 서치어드바이저 `https://smart-calc-kr.pages.dev` (`life_hide@naver.com`) |
+
+- 두 곳 모두 `https://smart-calc-kr.pages.dev/sitemap.xml`을 제출한 상태입니다.
+- Cloudflare Pages가 `*.html` 요청을 확장자 없는 주소로 308 리다이렉트하지만, 확인 파일은 확장자 없는 주소에서도 같은 내용이 그대로 응답되어 두 엔진 모두 통과했습니다.
+- 예전 GitHub Pages(`psh613.github.io/smart-calc-kr`)는 2026-11-22에 비활성화(Unpublish + Branch None)했습니다.
+- 커스텀 도메인을 붙이면 두 엔진에 **새 주소를 사이트로 다시 추가**하고 소유확인을 새로 해야 합니다(속성별 확인이기 때문).
+
 ## 요율 갱신 위치
 
 2026년 제도 값은 `assets/calc-core.js`의 `R2026` 객체 한 곳에 모여 있습니다. 국민연금·건강보험·장기요양 요율, 기준소득월액 상·하한, 식대 비과세 한도, 기본공제 단가, 자녀세액공제 금액이 여기 있습니다. 소득세율 구간은 같은 파일의 `BRACKETS`, 근로소득공제는 `wageDeduction()` 함수에 있습니다.
