@@ -10,7 +10,7 @@ import sys
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 BASE = "https://smart-calc-kr.pages.dev/"
-PAGES = ["index.html", "salary.html", "crypto.html", "compound.html", "about.html", "privacy.html"]
+PAGES = ["index.html", "salary.html", "rent-tax.html", "card-tax.html", "crypto.html", "compound.html", "about.html", "privacy.html"]
 
 problems = []
 checks = 0
@@ -52,6 +52,8 @@ for page in PAGES:
 
 SCRIPT_OF = {
     "salary.html": ["assets/salary.js", "assets/ui.js"],
+    "rent-tax.html": ["assets/rent.js", "assets/ui.js"],
+    "card-tax.html": ["assets/card.js", "assets/ui.js"],
     "crypto.html": ["assets/crypto.js", "assets/ui.js"],
     "compound.html": ["assets/compound.js", "assets/ui.js"],
 }
@@ -109,7 +111,8 @@ try:
     import quickjs
     ctx = quickjs.Context()
     for f in ["assets/calc-core.js", "assets/withholding-table.js", "assets/ui.js",
-              "assets/salary.js", "assets/crypto.js", "assets/compound.js"]:
+              "assets/salary.js", "assets/rent.js", "assets/card.js",
+              "assets/crypto.js", "assets/compound.js"]:
         src = read(f)
         try:
             ctx.eval("(function(){" + src.replace("</script>", "") + "\n})")
@@ -129,6 +132,31 @@ except ImportError:
 for page in PAGES:
     for i, code in enumerate(re.findall(r"<script>(.*?)</script>", read(page), re.S)):
         check(f"{page} 인라인 스크립트 {i}", "document." in code or code.strip() == "")
+
+# ── 8. 404 페이지 ──────────────────────────────────────────────
+# Cloudflare Pages는 없는 경로에 404.html을 404 상태로 돌려준다.
+# 파일이 없으면 index.html을 200으로 돌려주는 soft 404가 생긴다.
+check("404.html 존재", os.path.exists(os.path.join(ROOT, "404.html")))
+if os.path.exists(os.path.join(ROOT, "404.html")):
+    notfound = read("404.html")
+    check("404 noindex", 'name="robots" content="noindex' in notfound)
+    check("404 홈 링크", 'href="/"' in notfound)
+    check("404 h1 하나", notfound.count("<h1") == 1, f"h1 {notfound.count('<h1')}개")
+    # 404는 임의 경로에서 응답하므로 모든 링크가 루트 절대경로여야 한다
+    for ref in re.findall(r'(?:href|src)="([^"#]+)"', notfound):
+        check(f"404 {ref} 절대경로", ref.startswith("/") or ref.startswith("http"), ref)
+    for target in ("salary", "rent-tax", "card-tax", "crypto", "compound"):
+        check(f"404 → {target} 링크", f'href="/{target}"' in notfound)
+
+# ── 9. 새 계산기 상호 링크 ───────────────────────────────────────
+for page in ("rent-tax.html", "card-tax.html"):
+    html = read(page)
+    check(f"{page} 블로그 링크", "blog.naver.com/benefitnote_kr/224484616283" in html)
+    other = "card-tax.html" if page == "rent-tax.html" else "rent-tax.html"
+    check(f"{page} → {other} 링크", other in html)
+    check(f"{page} → 8,000만 기준 표기", "8,000만" in html or "7,000만" in html)
+check("index → rent-tax 카드", 'href="rent-tax.html"' in read("index.html"))
+check("index → card-tax 카드", 'href="card-tax.html"' in read("index.html"))
 
 # ── 결과 ────────────────────────────────────────────────────────
 print(f"검사 {checks}건")

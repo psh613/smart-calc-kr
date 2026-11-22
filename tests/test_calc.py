@@ -288,6 +288,145 @@ for kids, want in [(0, 0), (1, 250_000), (2, 550_000), (3, 950_000), (4, 1_350_0
     check(f"자녀세액공제 {kids}명", call("childTaxCredit", kids) == want,
           f"got={call('childTaxCredit', kids)}, want={want}")
 
+# ── 7. 연말정산 공통: 과세표준·한계세율 ───────────────────────
+ctx = json.loads(q.eval("JSON.stringify(CalcCore.estimateTaxContext(45000000, 1))"))
+near("4,500만 과세표준 추정", ctx["taxBase"], 27_127_320, tol=1)
+check("4,500만 한계세율 15%", abs(ctx["marginalRate"] - 0.15) < 1e-9, ctx["marginalRate"])
+near("4,500만 결정세액 추정", ctx["annualTax"], 2_149_098, tol=1)
+
+for base, want in [(0, 0.06), (14_000_000, 0.06), (14_000_001, 0.15), (50_000_000, 0.15), (50_000_001, 0.24),
+                   (88_000_001, 0.35), (150_000_001, 0.38), (500_000_001, 0.42), (2_000_000_000, 0.45)]:
+    got = call("marginalRate", base)
+    check(f"한계세율 {base:,}", abs(got - want) < 1e-9, f"got={got}, want={want}")
+
+# 소득공제 100만원의 실제 절세액은 한계세율보다 작다(근로소득세액공제 동반 감소)
+sv = json.loads(q.eval("JSON.stringify(CalcCore.deductionSaving(CalcCore.estimateTaxContext(30000000, 1), 1000000))"))
+check("3,000만 소득공제 절세 < 한계세율", sv["taxSaving"] < 150_000, f"saving={sv['taxSaving']}")
+check("3,000만 소득공제 절세 > 0", sv["taxSaving"] > 0, f"saving={sv['taxSaving']}")
+check("지방소득세 포함 = ×1.1", abs(sv["totalSaving"] - round(sv["taxSaving"] * 1.1)) <= 1, sv)
+
+# ── 8. 월세 세액공제 vs 현금영수증 소득공제 ───────────────────
+r1 = call("computeRentCompare", {"grossSalary": 45_000_000, "annualRent": 8_400_000,
+                                  "otherCardSpend": 5_000_000, "dependents": 1})
+check("4,500만 공제율 17%", abs(r1["creditRate"] - 0.17) < 1e-9, r1["creditRate"])
+near("4,500만 세액공제 절세", r1["creditApplied"], 1_428_000, tol=1)          # 840만 × 17%
+near("4,500만 현금영수증 대상", r1["rentExcess"], 2_150_000, tol=1)           # 문턱 1,125만 초과분
+near("4,500만 현금영수증 소득공제", r1["rentDeduction"], 645_000, tol=1)        # 215만 × 30%
+near("4,500만 현금영수증 절세", r1["cashTaxSaving"], 96_750, tol=1)
+check("4,500만 세액공제 우세", r1["winner"] == "credit", r1["winner"])
+near("4,500만 차액", r1["gap"], 1_331_250, tol=1)
+
+r2 = call("computeRentCompare", {"grossSalary": 60_000_000, "annualRent": 10_800_000,
+                                  "otherCardSpend": 15_000_000, "dependents": 1})
+check("6,000만 공제율 15%", abs(r2["creditRate"] - 0.15) < 1e-9, r2["creditRate"])
+near("월세 1,080만 → 1,000만 한도", r2["creditBase"], 10_000_000, tol=1)
+near("6,000만 세액공제 절세", r2["creditApplied"], 1_500_000, tol=1)
+near("6,000만 카드 한도 적용", r2["rentDeduction"], 3_000_000, tol=1)
+near("6,000만 현금영수증 절세", r2["cashTaxSaving"], 450_000, tol=1)
+
+r3 = call("computeRentCompare", {"grossSalary": 30_000_000, "annualRent": 7_200_000,
+                                  "otherCardSpend": 3_000_000, "dependents": 1})
+check("3,000만 결정세액 한도", r3["creditLimitedByTax"], f"credit={r3['creditAmount']}, tax={r3['annualTax']}")
+near("3,000만 한도 = 결정세액", r3["creditApplied"], r3["annualTax"], tol=1)
+
+r4 = call("computeRentCompare", {"grossSalary": 90_000_000, "annualRent": 9_600_000,
+                                  "otherCardSpend": 40_000_000, "dependents": 1})
+check("8,000만 초과 세액공제 없음", r4["creditRate"] == 0 and r4["creditApplied"] == 0, json.dumps(r4)[:120])
+
+r5 = call("computeRentCompare", {"grossSalary": 45_000_000, "annualRent": 8_400_000,
+                                  "otherCardSpend": 5_000_000, "dependents": 1, "meetsRequirement": False})
+check("요건 미충족 → 세액공제 0", r5["creditApplied"] == 0, r5["creditApplied"])
+check("요건 미충족 → 현금영수증 우세", r5["winner"] == "cash", r5["winner"])
+
+# 문턱 미달이면 현금영수증 소득공제는 0원
+r6 = call("computeRentCompare", {"grossSalary": 45_000_000, "annualRent": 8_400_000,
+                                  "otherCardSpend": 0, "dependents": 1})
+check("문턱 미달 소득공제 0", r6["rentDeduction"] == 0 and r6["thresholdShort"] > 0, json.dumps(r6)[:120])
+
+# 그 외 사용액이 카드 한도를 다 채우면 월세 몫은 0
+r7 = call("computeRentCompare", {"grossSalary": 60_000_000, "annualRent": 6_000_000,
+                                  "otherCardSpend": 60_000_000, "dependents": 1})
+check("카드 한도 소진 시 월세 몫 0", r7["rentDeduction"] == 0, r7["rentDeduction"])
+
+# 경계값·방어
+for bad in [{"grossSalary": 0, "annualRent": 0, "otherCardSpend": 0},
+            {"grossSalary": -1000, "annualRent": -1000, "otherCardSpend": -1000},
+            {"grossSalary": 45_000_000, "annualRent": 120_000_000, "otherCardSpend": 0}]:
+    out = call("computeRentCompare", bad)
+    for key, v in out.items():
+        if isinstance(v, (int, float)) and not isinstance(v, bool):
+            check(f"월세비교 {bad['grossSalary']}/{bad['annualRent']} {key} 유한", math.isfinite(v), f"{key}={v}")
+
+# 월세액이 늘수록 두 쪽 절세액 모두 줄지 않는다
+prev_c = prev_k = -1
+for rent in range(0, 14_000_001, 1_000_000):
+    s = call("computeRentCompare", {"grossSalary": 45_000_000, "annualRent": rent,
+                                    "otherCardSpend": 5_000_000, "dependents": 1})
+    check(f"월세 {rent:,} 세액공제 단조", s["creditApplied"] >= prev_c, f"{s['creditApplied']} < {prev_c}")
+    check(f"월세 {rent:,} 현금영수증 단조", s["cashTaxSaving"] >= prev_k, f"{s['cashTaxSaving']} < {prev_k}")
+    prev_c, prev_k = s["creditApplied"], s["cashTaxSaving"]
+
+# ── 9. 신용카드 등 사용금액 소득공제 ───────────────────────────
+for gross, kids, want in [(50_000_000, 0, 3_000_000), (50_000_000, 1, 3_500_000), (50_000_000, 2, 4_000_000),
+                          (70_000_000, 0, 3_000_000), (70_000_001, 0, 2_500_000),
+                          (80_000_000, 1, 2_750_000), (80_000_000, 2, 3_000_000)]:
+    got = json.loads(q.eval(f"JSON.stringify(CalcCore.cardDeductionLimit({gross}, {kids}))"))
+    check(f"카드 한도 {gross:,}·자녀{kids}", got == want, f"got={got}, want={want}")
+
+c1 = call("computeCardDeduction", {"grossSalary": 50_000_000, "creditCard": 15_000_000,
+                                    "debitCash": 5_000_000, "dependents": 1, "children": 0})
+near("카드 25% 문턱", c1["threshold"], 12_500_000, tol=1)
+near("카드 신용카드 초과분", c1["excessCredit"], 2_500_000, tol=1)
+near("카드 체크·현금 전액", c1["excessDebit"], 5_000_000, tol=1)
+near("카드 산출 공제액", c1["rawDeduction"], 1_875_000, tol=1)      # 250만×15% + 500만×30%
+near("카드 적용 공제액", c1["deduction"], 1_875_000, tol=1)
+near("카드 절세액", c1["taxSaving"], 281_250, tol=1)              # 15% 구간
+near("카드 지방세 포함 절세", c1["totalSaving"], 309_375, tol=1)
+near("카드 남은 한도", c1["limitLeft"], 1_125_000, tol=1)
+
+# 신용카드가 문턱을 먼저 채운다
+c2 = call("computeCardDeduction", {"grossSalary": 50_000_000, "creditCard": 20_000_000,
+                                    "debitCash": 0, "dependents": 1})
+near("신용 2,000만 전액 신용공제", c2["excessCredit"], 7_500_000, tol=1)
+near("신용 2,000만 공제액", c2["rawDeduction"], 1_125_000, tol=1)
+
+# 체크카드가 문턱을 채우는 경우
+c3 = call("computeCardDeduction", {"grossSalary": 40_000_000, "creditCard": 8_000_000,
+                                    "debitCash": 4_000_000, "dependents": 3, "children": 2})
+check("문턱 일부만 넘음", c3["excessCredit"] == 0 and abs(c3["excessDebit"] - 2_000_000) < 1, json.dumps(c3)[:120])
+near("자녀2 한도 400만", c3["limit"], 4_000_000, tol=1)
+near("자녀2 공제액", c3["deduction"], 600_000, tol=1)
+near("자녀2 절세액", c3["taxSaving"], 90_000, tol=1)
+
+# 한도 초과
+c4 = call("computeCardDeduction", {"grossSalary": 50_000_000, "creditCard": 40_000_000,
+                                    "debitCash": 0, "dependents": 1})
+check("한도 적용", c4["limitApplied"] and c4["deduction"] == 3_000_000, json.dumps(c4)[:160])
+near("잘린 공제액", c4["lostDeduction"], c4["rawDeduction"] - 3_000_000, tol=1)
+
+# 문턱 미달
+c5 = call("computeCardDeduction", {"grossSalary": 35_000_000, "creditCard": 6_000_000,
+                                    "debitCash": 1_000_000, "dependents": 1})
+check("문턱 미달 0원", c5["deduction"] == 0 and c5["taxSaving"] == 0, json.dumps(c5)[:120])
+check("문턱 부족액", abs(c5["thresholdShort"] - 1_750_000) < 1, c5["thresholdShort"])
+
+# 체크카드 사용액을 늘리면 공제액이 줄지 않는다(같은 총액)
+prev = -1
+for debit in range(0, 21_000_001, 2_000_000):
+    s = call("computeCardDeduction", {"grossSalary": 50_000_000, "creditCard": 20_000_000 - debit,
+                                      "debitCash": debit, "dependents": 1})
+    check(f"체크 {debit:,} 공제액 단조", s["deduction"] >= prev, f"{s['deduction']} < {prev}")
+    prev = s["deduction"]
+
+# 방어
+for bad in [{"grossSalary": 0, "creditCard": 0, "debitCash": 0},
+            {"grossSalary": -1, "creditCard": -1, "debitCash": -1},
+            {"grossSalary": 100_000_000, "creditCard": 900_000_000, "debitCash": 0, "children": 99}]:
+    out = call("computeCardDeduction", bad)
+    for key, v in out.items():
+        if isinstance(v, (int, float)) and not isinstance(v, bool):
+            check(f"카드 {bad['grossSalary']} {key} 유한", math.isfinite(v), f"{key}={v}")
+
 # ── 결과 출력 ──────────────────────────────────────────────────
 print(f"quickjs 엔진 · 검사 {checks}건")
 print("\n연봉별 월 실수령 (식대 20만 · 부양가족 1명 · 자녀 0명)")

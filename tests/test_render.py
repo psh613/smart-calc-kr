@@ -15,6 +15,8 @@ ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 
 PAGES = {
     "salary.html": ["assets/withholding-table.js", "assets/calc-core.js", "assets/ui.js", "assets/salary.js"],
+    "rent-tax.html": ["assets/calc-core.js", "assets/ui.js", "assets/rent.js"],
+    "card-tax.html": ["assets/calc-core.js", "assets/ui.js", "assets/card.js"],
     "crypto.html": ["assets/withholding-table.js", "assets/calc-core.js", "assets/ui.js", "assets/crypto.js"],
     "compound.html": ["assets/withholding-table.js", "assets/calc-core.js", "assets/ui.js", "assets/compound.js"],
 }
@@ -287,7 +289,89 @@ assert_clean("compound 음수 수익률·0년", text(ctx3, "final"))
 ctx3.eval('__set("initial", ""); __set("monthly", "")')
 assert_clean("compound 빈 입력", text(ctx3, "final"))
 
-print(f"검사 {checks}건 · 페이지 3개 렌더링")
+# ── 월세 공제 비교 페이지 ────────────────────────────────────────
+ctx4, _ = run_page("rent-tax.html", PAGES["rent-tax.html"])
+winner = text(ctx4, "winner")
+assert_clean("rent 유리한 쪽", winner)
+check("rent 기본 승자 = 세액공제", winner == "월세 세액공제", winner)
+check("rent 세액공제 금액", text(ctx4, "credit-saving") == "1,428,000원", text(ctx4, "credit-saving"))
+check("rent 현금영수증 금액", text(ctx4, "cash-saving") == "96,750원", text(ctx4, "cash-saving"))
+check("rent 차액", text(ctx4, "gap") == "+1,331,250원", text(ctx4, "gap"))
+check("rent 한계세율", text(ctx4, "marginal") == "15%", text(ctx4, "marginal"))
+assert_clean("rent 승자 설명", text(ctx4, "winner-sub"))
+detail = html(ctx4, "detail-rows")
+assert_clean("rent 상세 표", detail)
+check("rent 상세 표 6행", detail.count("<tr") == 6, f"{detail.count('<tr')}행")
+for label in ("공제 방식", "공제율", "공제 대상 월세", "산출 공제액", "세금 감소", "결론"):
+    check(f"rent 상세에 {label}", label in detail)
+rent_rows = html(ctx4, "rent-rows")
+assert_clean("rent 월세액별 표", rent_rows)
+check("rent 월세액별 10행", rent_rows.count("<tr") == 10, f"{rent_rows.count('<tr')}행")
+for note in ("credit-note", "stat-threshold-short", "stat-limit", "stat-break-even", "rent-caption"):
+    assert_clean(f"rent {note}", text(ctx4, note))
+
+# 요건 미충족으로 바꾸면 현금영수증 쪽이 이긴다
+ctx4.eval("""document.getElementById('require-seg')._children[1].fire('click')""")
+check("rent 요건 미충족 승자", text(ctx4, "winner") == "현금영수증 소득공제", text(ctx4, "winner"))
+assert_clean("rent 요건 미충족 결과", text(ctx4, "winner-sub"))
+ctx4.eval("""document.getElementById('require-seg')._children[0].fire('click')""")
+check("rent 요건 복귀", text(ctx4, "winner") == "월세 세액공제", text(ctx4, "winner"))
+
+# 총급여 8,000만 초과 → 둘 다 이득 없음
+ctx4.eval('__set("gross-salary", "90000000"); __set("other-card", "40000000")')
+assert_clean("rent 8,000만 초과", text(ctx4, "winner"))
+check("rent 8,000만 초과 안내", "8,000만" in text(ctx4, "credit-note"), text(ctx4, "credit-note"))
+
+# 월세를 늘리면 세액공제 금액이 늘어난다
+ctx4.eval('__set("gross-salary", "45000000"); __set("other-card", "5000000"); __set("annual-rent", "3000000")')
+low_credit = text(ctx4, "credit-saving")
+ctx4.eval('__set("annual-rent", "8400000")')
+check("rent 월세 증가 → 공제 증가", text(ctx4, "credit-saving") != low_credit, text(ctx4, "credit-saving"))
+ctx4.eval('__set("annual-rent", "")')
+assert_clean("rent 월세 빈 입력", text(ctx4, "winner"))
+ctx4.eval('__set("annual-rent", "12000000"); __set("dependents", "")')
+assert_clean("rent 부양가족 빈값", text(ctx4, "winner"))
+
+# ── 카드 소득공제 페이지 ────────────────────────────────────────
+ctx5, _ = run_page("card-tax.html", PAGES["card-tax.html"])
+ded = text(ctx5, "deduction")
+assert_clean("card 공제액", ded)
+check("card 공제액 기본값", ded == "1,875,000원", ded)
+check("card 절세액", text(ctx5, "tax-saving") == "281,250원", text(ctx5, "tax-saving"))
+check("card 지방세 포함", text(ctx5, "total-saving") == "309,375원", text(ctx5, "total-saving"))
+check("card 문턱", text(ctx5, "threshold") == "12,500,000원", text(ctx5, "threshold"))
+check("card 남은 한도", text(ctx5, "limit-left") == "1,125,000원", text(ctx5, "limit-left"))
+cdetail = html(ctx5, "detail-rows")
+assert_clean("card 상세 표", cdetail)
+check("card 상세 표 12행", cdetail.count("<tr") == 12, f"{cdetail.count('<tr')}행")
+for label in ("최저사용금액", "신용카드 15%", "체크·현금영수증 30%", "공제 한도", "적용 소득공제액", "예상 절세액"):
+    check(f"card 상세에 {label}", label in cdetail)
+mix = html(ctx5, "mix-rows")
+assert_clean("card 비율별 표", mix)
+check("card 비율별 5행", mix.count("<tr") == 5, f"{mix.count('<tr')}행")
+assert_clean("card 상태 안내", text(ctx5, "status"))
+assert_clean("card 절세율 설명", text(ctx5, "saving-rate-note"))
+
+# 결제수단을 체크카드로 몰면 공제액이 바뀐다
+ctx5.eval('__set("credit-card", "0"); __set("debit-cash", "20000000")')
+assert_clean("card 체크 100%", text(ctx5, "deduction"))
+check("card 체크 100% 변화", text(ctx5, "deduction") != "1,875,000원", text(ctx5, "deduction"))
+
+# 자녀 가산 한도
+ctx5.eval('__set("credit-card", "40000000"); __set("debit-cash", "0"); __set("children", "2")')
+assert_clean("card 한도 초과", text(ctx5, "deduction"))
+check("card 자녀2 한도 표기", "자녀 2명 이상" in html(ctx5, "detail-rows"), "")
+
+# 문턱 미달·빈 입력 방어
+ctx5.eval('__set("credit-card", "6000000"); __set("debit-cash", "1000000"); __set("gross-salary", "35000000"); __set("children", "0")')
+check("card 문턱 미달 0원", text(ctx5, "deduction") == "0원", text(ctx5, "deduction"))
+check("card 문턱 안내", "모자랍니다" in text(ctx5, "status"), text(ctx5, "status"))
+ctx5.eval('__set("credit-card", ""); __set("debit-cash", ""); __set("gross-salary", "")')
+assert_clean("card 빈 입력", text(ctx5, "deduction"))
+ctx5.eval('__set("gross-salary", "60000000"); __set("credit-card", "20000000"); __set("debit-cash", "5000000"); __set("dependents", ""); __set("children", "")')
+assert_clean("card 부양가족 빈값", text(ctx5, "deduction"))
+
+print(f"검사 {checks}건 · 페이지 {len(PAGES)}개 렌더링")
 if failures:
     print(f"실패 {len(failures)}건")
     for f in failures:

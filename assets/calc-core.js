@@ -147,6 +147,7 @@
 
   /* ── 연간 소득세 계산 ──────────────────────────────────────────
    * 보험료 특별소득공제와 표준세액공제(13만원) 중 유리한 쪽을 적용한다.
+   * extraDeduction: 카드·월세처럼 나중에 더해지는 소득공제(기본 0).
    */
   function computeAnnualTax(o) {
     o = o || {};
@@ -155,11 +156,12 @@
     var childCredit = childTaxCredit(o.children);
     var pensionAnnual = Math.max(0, num(o.pensionAnnual));
     var insuranceAnnual = Math.max(0, num(o.insuranceAnnual));
+    var extraDeduction = Math.max(0, num(o.extraDeduction));
 
     var wageDed = wageDeduction(gross);
     var income = Math.max(0, gross - wageDed);
     var basicDed = R2026.basicPerPerson * dependents;
-    var beforeSpecial = Math.max(0, income - basicDed - pensionAnnual);
+    var beforeSpecial = Math.max(0, income - basicDed - pensionAnnual - extraDeduction);
 
     // A안: 건강·장기요양·고용보험료 특별소득공제 적용
     var baseA = Math.max(0, beforeSpecial - insuranceAnnual);
@@ -184,6 +186,7 @@
       pensionDeduction: pensionAnnual,
       insuranceDeduction: useA ? insuranceAnnual : 0,
       standardCredit: useA ? 0 : R2026.standardCredit,
+      extraDeduction: extraDeduction,
       taxBase: useA ? baseA : baseB,
       computedTax: useA ? taxA : taxB,
       laborCredit: useA ? creditA : laborTaxCredit(taxB, gross),
@@ -397,8 +400,255 @@
     };
   }
 
+  /* ══ 연말정산 공통 ══════════════════════════════════════════════
+   * 카드·월세 공제의 절세액은 "공제액 × 한계세율"로만 보면 실제보다 크게
+   * 나온다. 산출세액이 줄면 근로소득세액공제(산출세액의 55%·30%)도 함께
+   * 줄고, 공제가 구간을 넘으면 세율도 낮아지기 때문이다. 그래서 여기서는
+   * 공제 전후의 결정세액을 각각 계산해 그 차이를 절세액으로 쓴다.
+   */
+
+  /** 과세표준이 속한 구간의 한계세율 */
+  function marginalRate(taxBase) {
+    var b = Math.max(0, num(taxBase));
+    for (var i = 0; i < BRACKETS.length; i++) {
+      if (b <= BRACKETS[i].upTo) return BRACKETS[i].rate;
+    }
+    return BRACKETS[BRACKETS.length - 1].rate;
+  }
+
+  /** 총급여·부양가족 수만으로 연말정산 과세표준과 결정세액을 추정한다 */
+  function estimateTaxContext(grossSalary, dependents) {
+    var g = Math.max(0, num(grossSalary));
+    var dep = clamp(Math.round(num(dependents) || 1), 1, 11);
+    var monthlyTaxable = g / 12;
+    var pensionBase = clamp(trunc1000(monthlyTaxable), R2026.pensionBaseMin, R2026.pensionBaseMax);
+    var pensionAnnual = floor10(pensionBase * R2026.pensionRate) * 12;
+    var healthTotal = clamp(monthlyTaxable * R2026.healthTotalRate, R2026.healthTotalMin, R2026.healthTotalMax);
+    var health = floor10(healthTotal / 2);
+    var ltc = floor10(health * R2026.ltcRate);
+    var employ = floor10(monthlyTaxable * R2026.employRate);
+    var insuranceAnnual = (health + ltc + employ) * 12;
+    var est = computeAnnualTax({
+      gross: g,
+      dependents: dep,
+      children: 0,
+      pensionAnnual: pensionAnnual,
+      insuranceAnnual: insuranceAnnual
+    });
+    return {
+      gross: g,
+      dependents: dep,
+      pensionAnnual: pensionAnnual,
+      insuranceAnnual: insuranceAnnual,
+      taxBase: est.taxBase,
+      annualTax: est.annualTax,
+      marginalRate: marginalRate(est.taxBase)
+    };
+  }
+
+  /** 소득공제 1원이 실제로 줄여 주는 결정세액 */
+  function deductionSaving(ctx, deduction) {
+    var d = Math.max(0, num(deduction));
+    if (!ctx) return { taxSaving: 0, totalSaving: 0, effectiveRate: 0, taxBaseAfter: 0 };
+    if (d <= 0) return { taxSaving: 0, totalSaving: 0, effectiveRate: 0, taxBaseAfter: ctx.taxBase };
+    var after = computeAnnualTax({
+      gross: ctx.gross,
+      dependents: ctx.dependents,
+      children: 0,
+      pensionAnnual: ctx.pensionAnnual,
+      insuranceAnnual: ctx.insuranceAnnual,
+      extraDeduction: d
+    });
+    var saving = Math.max(0, ctx.annualTax - after.annualTax);
+    return {
+      taxSaving: Math.round(saving),
+      totalSaving: Math.round(saving * (1 + R2026.localTaxRate)),
+      effectiveRate: d > 0 ? saving / d : 0,
+      taxBaseAfter: after.taxBase
+    };
+  }
+
+  /* ══ 2026년 월세 세액공제 vs 현금영수증 소득공제 ════════════════
+   * 조세특례제한법 §95의2: 총급여 8,000만 원 이하 무주택 세대주,
+   * 월세액 15%(총급여 5,500만 원 이하 17%), 연 1,000만 원 한도.
+   * 같은 법 §126의2 ④: 세액공제 받은 월세는 카드 소득공제에서 제외.
+   */
+  var RENT2026 = {
+    creditCap: 10000000,
+    creditRateLow: 0.17,
+    creditRateHigh: 0.15,
+    lowIncomeLimit: 55000000,
+    incomeLimit: 80000000,
+    thresholdRate: 0.25,
+    cashRate: 0.30,
+    cardLimitGross: 70000000,
+    cardLimitLow: 3000000,
+    cardLimitHigh: 2500000
+  };
+
+  function computeRentCompare(input) {
+    input = input || {};
+    var gross = Math.max(0, num(input.grossSalary));
+    var rent = Math.max(0, num(input.annualRent));
+    var other = Math.max(0, num(input.otherCardSpend));
+    var dependents = clamp(Math.round(num(input.dependents) || 1), 1, 11);
+    var meetsRequirement = input.meetsRequirement !== false;
+
+    var ctx = estimateTaxContext(gross, dependents);
+
+    /* ① 월세액 세액공제 */
+    var creditRate = gross <= RENT2026.lowIncomeLimit ? RENT2026.creditRateLow
+      : (gross <= RENT2026.incomeLimit ? RENT2026.creditRateHigh : 0);
+    var creditBase = Math.min(rent, RENT2026.creditCap);
+    var creditAmount = Math.round(creditBase * creditRate);
+    var creditApplied = meetsRequirement ? Math.min(creditAmount, ctx.annualTax) : 0;
+
+    /* ② 현금영수증 소득공제 (세액공제를 받지 않는 경우에만 가능)
+     * 월세를 카드 사용액에 "추가로" 넣었을 때 늘어나는 공제액을 본다.
+     * 25% 문턱은 내가 어차피 쓰는 그 외 사용액이 먼저 채우는 것으로 계산한다.
+     */
+    var threshold = gross * RENT2026.thresholdRate;
+    var totalSpend = other + rent;
+    var excess = Math.max(0, totalSpend - threshold);
+    var otherExcess = Math.max(0, other - threshold);
+    var rentExcess = Math.max(0, rent - Math.max(0, threshold - other));
+    var cardLimit = gross <= RENT2026.cardLimitGross ? RENT2026.cardLimitLow : RENT2026.cardLimitHigh;
+    var otherDeduction = Math.min(otherExcess * RENT2026.cashRate, cardLimit);
+    var remainingLimit = Math.max(0, cardLimit - otherDeduction);
+    var rentDeduction = Math.min(rentExcess * RENT2026.cashRate, remainingLimit);
+    var cash = deductionSaving(ctx, rentDeduction);
+
+    var gap = creditApplied - cash.taxSaving;
+    var winner = gap > 0 ? 'credit' : (gap < 0 ? 'cash' : 'tie');
+
+    return {
+      grossSalary: gross,
+      annualRent: rent,
+      otherCardSpend: other,
+      dependents: dependents,
+      meetsRequirement: meetsRequirement,
+      taxableIncomeLimit: RENT2026.incomeLimit,
+      lowIncomeLimit: RENT2026.lowIncomeLimit,
+      creditRate: creditRate,
+      creditBase: creditBase,
+      creditCapApplied: rent > RENT2026.creditCap,
+      creditAmount: creditAmount,
+      creditApplied: creditApplied,
+      creditLimitedByTax: meetsRequirement && creditAmount > ctx.annualTax,
+      creditMax: Math.round(RENT2026.creditCap * creditRate),
+      threshold: threshold,
+      totalSpend: totalSpend,
+      excessSpend: excess,
+      thresholdShort: Math.max(0, threshold - totalSpend),
+      rentExcess: rentExcess,
+      cardLimit: cardLimit,
+      otherDeduction: otherDeduction,
+      remainingLimit: remainingLimit,
+      rentDeduction: rentDeduction,
+      rentDeductionCapped: rentExcess * RENT2026.cashRate > remainingLimit,
+      cashTaxSaving: cash.taxSaving,
+      cashTotalSaving: cash.totalSaving,
+      cashEffectiveRate: cash.effectiveRate,
+      marginalRate: ctx.marginalRate,
+      taxBase: ctx.taxBase,
+      annualTax: ctx.annualTax,
+      breakEvenRate: creditRate > 0 ? creditRate / RENT2026.cashRate : null,
+      winner: winner,
+      gap: Math.abs(gap)
+    };
+  }
+
+  /* ══ 2026년 신용카드 등 사용금액 소득공제 ══════════════════════
+   * 조세특례제한법 §126의2: 총급여 25% 초과분에 신용 15%·체크/현금 30%.
+   * 25% 문턱은 공제율이 낮은 신용카드 사용분부터 채운다(시행령 §121의2).
+   * 한도 300/250만 원, 2026년 사용분부터 자녀 1명 350만·2명 이상 400만 원.
+   */
+  var CARD2026 = {
+    thresholdRate: 0.25,
+    creditRate: 0.15,
+    debitRate: 0.30,
+    limitGross: 70000000
+  };
+
+  function cardDeductionLimit(grossSalary, children) {
+    var g = Math.max(0, num(grossSalary));
+    var c = clamp(Math.round(num(children) || 0), 0, 6);
+    if (g <= CARD2026.limitGross) {
+      if (c >= 2) return 4000000;
+      if (c === 1) return 3500000;
+      return 3000000;
+    }
+    if (c >= 2) return 3000000;
+    if (c === 1) return 2750000;
+    return 2500000;
+  }
+
+  function computeCardDeduction(input) {
+    input = input || {};
+    var gross = Math.max(0, num(input.grossSalary));
+    var credit = Math.max(0, num(input.creditCard));
+    var debit = Math.max(0, num(input.debitCash));
+    var children = clamp(Math.round(num(input.children) || 0), 0, 6);
+    var dependents = clamp(Math.round(num(input.dependents) || 1), 1, 11);
+
+    var ctx = estimateTaxContext(gross, dependents);
+    var threshold = gross * CARD2026.thresholdRate;
+    var totalSpend = credit + debit;
+
+    var excessCredit = 0, excessDebit = 0;
+    if (credit >= threshold) {
+      excessCredit = credit - threshold;
+      excessDebit = debit;
+    } else {
+      excessCredit = 0;
+      excessDebit = Math.max(0, totalSpend - threshold);
+    }
+    var creditPart = excessCredit * CARD2026.creditRate;
+    var debitPart = excessDebit * CARD2026.debitRate;
+    var rawDeduction = creditPart + debitPart;
+    var limit = cardDeductionLimit(gross, children);
+    var deduction = Math.min(rawDeduction, limit);
+    var saving = deductionSaving(ctx, deduction);
+
+    return {
+      grossSalary: gross,
+      creditCard: credit,
+      debitCash: debit,
+      children: children,
+      dependents: dependents,
+      threshold: threshold,
+      totalSpend: totalSpend,
+      excessSpend: Math.max(0, totalSpend - threshold),
+      thresholdShort: Math.max(0, threshold - totalSpend),
+      excessCredit: excessCredit,
+      excessDebit: excessDebit,
+      creditPart: creditPart,
+      debitPart: debitPart,
+      rawDeduction: rawDeduction,
+      limit: limit,
+      limitApplied: rawDeduction > limit,
+      lostDeduction: Math.max(0, rawDeduction - limit),
+      deduction: deduction,
+      limitLeft: Math.max(0, limit - deduction),
+      marginalRate: ctx.marginalRate,
+      taxBase: ctx.taxBase,
+      annualTax: ctx.annualTax,
+      taxSaving: saving.taxSaving,
+      totalSaving: saving.totalSaving,
+      effectiveSavingRate: saving.effectiveRate
+    };
+  }
+
   root.CalcCore = {
     R2026: R2026,
+    marginalRate: marginalRate,
+    estimateTaxContext: estimateTaxContext,
+    deductionSaving: deductionSaving,
+    RENT2026: RENT2026,
+    computeRentCompare: computeRentCompare,
+    CARD2026: CARD2026,
+    cardDeductionLimit: cardDeductionLimit,
+    computeCardDeduction: computeCardDeduction,
     wageDeduction: wageDeduction,
     bracketTax: bracketTax,
     laborTaxCredit: laborTaxCredit,
