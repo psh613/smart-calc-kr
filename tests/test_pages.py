@@ -10,7 +10,7 @@ import sys
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 BASE = "https://smart-calc-kr.pages.dev/"
-PAGES = ["index.html", "salary.html", "rent-tax.html", "card-tax.html", "crypto.html", "compound.html", "about.html", "privacy.html"]
+PAGES = ["index.html", "salary.html", "rent-tax.html", "card-tax.html", "staking.html", "crypto.html", "compound.html", "about.html", "privacy.html"]
 
 problems = []
 checks = 0
@@ -54,6 +54,7 @@ SCRIPT_OF = {
     "salary.html": ["assets/salary.js", "assets/ui.js"],
     "rent-tax.html": ["assets/rent.js", "assets/ui.js"],
     "card-tax.html": ["assets/card.js", "assets/ui.js"],
+    "staking.html": ["assets/staking.js", "assets/ui.js"],
     "crypto.html": ["assets/crypto.js", "assets/ui.js"],
     "compound.html": ["assets/compound.js", "assets/ui.js"],
 }
@@ -112,7 +113,7 @@ try:
     ctx = quickjs.Context()
     for f in ["assets/calc-core.js", "assets/withholding-table.js", "assets/ui.js",
               "assets/salary.js", "assets/rent.js", "assets/card.js",
-              "assets/crypto.js", "assets/compound.js"]:
+              "assets/staking.js", "assets/crypto.js", "assets/compound.js"]:
         src = read(f)
         try:
             ctx.eval("(function(){" + src.replace("</script>", "") + "\n})")
@@ -145,7 +146,7 @@ if os.path.exists(os.path.join(ROOT, "404.html")):
     # 404는 임의 경로에서 응답하므로 모든 링크가 루트 절대경로여야 한다
     for ref in re.findall(r'(?:href|src)="([^"#]+)"', notfound):
         check(f"404 {ref} 절대경로", ref.startswith("/") or ref.startswith("http"), ref)
-    for target in ("salary", "rent-tax", "card-tax", "crypto", "compound"):
+    for target in ("salary", "rent-tax", "card-tax", "crypto", "staking", "compound"):
         check(f"404 → {target} 링크", f'href="/{target}"' in notfound)
 
 # ── 9. 새 계산기 상호 링크 ───────────────────────────────────────
@@ -157,6 +158,18 @@ for page in ("rent-tax.html", "card-tax.html"):
     check(f"{page} → 8,000만 기준 표기", "8,000만" in html or "7,000만" in html)
 check("index → rent-tax 카드", 'href="rent-tax.html"' in read("index.html"))
 check("index → card-tax 카드", 'href="card-tax.html"' in read("index.html"))
+
+# ── 10. 스테이킹 계산기 ──
+stake = read("staking.html")
+check("staking → coin-director /8", "coin-director.tistory.com/8" in stake)
+check("staking → coin-director /9", "coin-director.tistory.com/9" in stake)
+check("staking → crypto 링크", 'href="crypto.html"' in stake)
+check("staking → 6종 종목", all(t in stake for t in ("ETH", "SOL", "ATOM", "ADA", "POL", "CRO")))
+check("staking → 수수료 10% 표기", "10%" in stake and "검증 수수료" in stake)
+check("staking → 기준일", "2026-11-25" in stake)
+check("index → staking 카드", 'href="staking.html"' in read("index.html"))
+for page in PAGES:
+    check(f"{page} nav에 스테이킹", 'href="staking.html"' in read(page))
 
 # ── 결과 ────────────────────────────────────────────────────────
 print(f"검사 {checks}건")

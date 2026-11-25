@@ -14,6 +14,7 @@
 | `rent-tax.html` | **월세 세액공제 vs 현금영수증 소득공제 비교기** (총급여 8,000만 원 이하 · 15%/17% · 연 1,000만 원 한도 ↔ 25% 문턱 초과분 30% 소득공제 × 한계세율) |
 | `card-tax.html` | **연말정산 신용카드·체크카드·현금영수증 소득공제 시뮬레이터** (25% 문턱 · 15%/30% · 한도 300/250만 원, 자녀 가산 350/400만 원, 결제수단 비율별 비교) |
 | `crypto.html` | 코인 물타기 평단가 + 선물 롱/숏 레버리지별 예상 청산가 (원·달러 병기, 환율 직접 입력) |
+| `staking.html` | **업비트 스테이킹 실수령 수익 · 언스테이킹 손익분기 시뮬레이터** (업비트 6종 연 추정 보상률·수수료 10%·대기기간, 2026-11-25 기준 · 기간별·종목별·시세 하락 시나리오) |
 | `compound.html` | 적립식 투자(DCA)·복리 (연도별 표) |
 | `about.html` / `privacy.html` | 사이트 소개 / 개인정보처리방침 (광고 심사 대비) |
 | `sitemap.xml` / `robots.txt` | 검색엔진 등록용 |
@@ -24,13 +25,13 @@
 ```
 smart-calc-kr/
 ├── index.html  salary.html  rent-tax.html  card-tax.html
-│   crypto.html  compound.html  about.html  privacy.html  404.html
+│   crypto.html  staking.html  compound.html  about.html  privacy.html  404.html
 ├── assets/
 │   ├── style.css              공용 디자인 (모바일 우선)
 │   ├── calc-core.js           계산 로직 (DOM 없음 · 테스트 대상)
 │   ├── withholding-table.js   2026년 근로소득 간이세액표 (소득세법 시행령 별표2, 자동 생성)
 │   ├── ui.js                  숫자 포맷·환율·입력 바인딩
-│   └── salary.js  rent.js  card.js  crypto.js  compound.js   페이지별 렌더링
+│   └── salary.js  rent.js  card.js  staking.js  crypto.js  compound.js   페이지별 렌더링
 ├── tools/build_withholding_table.py   별표2 PDF → withholding-table.js 변환
 ├── tests/test_calc.py          계산 로직 검증
 ├── tests/test_pages.py         파일·id·메타·사이트맵 정적 점검
@@ -70,7 +71,7 @@ HTTPS·전 세계 CDN·무료 트래픽 무제한이 기본이고, 나중에 개
 `smart-calc-kr.pages.dev` 문자열이 들어간 곳은 3종류입니다.
 
 - 각 HTML의 `<link rel="canonical">`, `og:url`, JSON-LD의 `url`
-- `sitemap.xml`의 `<loc>` 8개
+- `sitemap.xml`의 `<loc>` 9개
 - `robots.txt`의 `Sitemap:` 줄
 
 커스텀 도메인은 Cloudflare Pages 프로젝트 → Custom domains에서 추가합니다(저장소에 `CNAME` 파일은 필요 없음).
@@ -92,7 +93,7 @@ grep -rn "smart-calc-kr.pages.dev" --include="*.html" --include="*.xml" --includ
 | `BingSiteAuth.xml` | Bing 웹마스터 도구 `https://smart-calc-kr.pages.dev/` (XML 파일 확인) |
 | `2f174d526de74e46bef220ae582574e5.txt` | IndexNow API 키 파일 (Bing·api.indexnow.org 실시간 색인 제출용) |
 
-- 세 곳 모두 `https://smart-calc-kr.pages.dev/sitemap.xml`을 제출한 상태입니다(Bing은 2026-11-22 Success, 6 URLs 발견 → 연말정산 계산기 2종 추가 후 8 URLs로 갱신).
+- 세 곳 모두 `https://smart-calc-kr.pages.dev/sitemap.xml`을 제출한 상태입니다(Bing은 2026-11-22 Success, 6 URLs 발견 → 연말정산 계산기 2종 추가 후 8 URLs → 스테이킹 계산기 추가 후 9 URLs).
 - Cloudflare Pages가 `*.html` 요청을 확장자 없는 주소로 308 리다이렉트하지만, 확인 파일은 확장자 없는 주소에서도 같은 내용이 그대로 응답되어 두 엔진 모두 통과했습니다.
 - 예전 GitHub Pages(`psh613.github.io/smart-calc-kr`)는 2026-11-22에 비활성화(Unpublish + Branch None)했습니다.
 - 커스텀 도메인을 붙이면 두 엔진에 **새 주소를 사이트로 다시 추가**하고 소유확인을 새로 해야 합니다(속성별 확인이기 때문). `BingSiteAuth.xml`·IndexNow 키 파일도 새 도메인 기준으로 다시 발급·배치해야 합니다.
@@ -112,6 +113,8 @@ curl -s -o /dev/null -w '%{http_code}\n' -X POST -H 'Content-Type: application/j
 
 2026년 제도 값은 `assets/calc-core.js`의 `R2026` 객체 한 곳에 모여 있습니다. 국민연금·건강보험·장기요양 요율, 기준소득월액 상·하한, 식대 비과세 한도, 기본공제 단가, 자녀세액공제 금액이 여기 있습니다. 소득세율 구간은 같은 파일의 `BRACKETS`, 근로소득공제는 `wageDeduction()` 함수에 있습니다.
 
+업비트 스테이킹 값(연 추정 보상률·대기기간·최소 수량·현재가·52주 최고/최저)은 같은 파일의 `STAKING2026.assets`에 모여 있습니다. 보상률은 업비트 스테이킹 신청 화면에서 매주 화요일 갱신되고, 현재가는 업비트 공개 시세 API(`https://api.upbit.com/v1/ticker?markets=KRW-ETH,...`)로 확인할 수 있습니다.
+
 간이세액표는 매년 3월 1일 원천징수분부터 새 별표가 적용됩니다. 개정되면:
 
 ```bash
@@ -123,9 +126,9 @@ python3 tests/test_calc.py                           # 공개 값과 다시 대�
 ## 검증
 
 ```bash
-python3 tests/test_calc.py    # 계산 로직 809건 (표 공개값·실수령·연말정산 공제·경계값)
-python3 tests/test_pages.py   # 정적 점검 323건 (파일·id 결선·메타·사이트맵·404)
-python3 tests/test_render.py  # 렌더링 스모크 239건 (5개 페이지 JS 실행, NaN 검사)
+python3 tests/test_calc.py    # 계산 로직 2,651건 (표 공개값·실수령·연말정산 공제·스테이킹·경계값)
+python3 tests/test_pages.py   # 정적 점검 390건 (파일·id 결선·메타·사이트맵·404·상호 링크)
+python3 tests/test_render.py  # 렌더링 스모크 349건 (6개 페이지 JS 실행, NaN 검사)
 ```
 
 `test_calc.py`는 `quickjs`(pip)로 실제 JS를 실행해 대조합니다. 검증 항목에 포함된 것:
@@ -136,6 +139,7 @@ python3 tests/test_render.py  # 렌더링 스모크 239건 (5개 페이지 JS �
 - 물타기 평단가·선물 청산가·복리 10년, 0으로 나누기·음수·범위 초과 방어
 - 월세 공제 비교: 총급여 4,500만 원·월세 840만 원 → 세액공제 142만 8,000원 vs 현금영수증 9만 6,750원
 - 카드 공제: 총급여 5,000만 원·신용 1,500만·체크 500만 원 → 소득공제 187만 5,000원(국세청 예시와 일치), 자녀 가산 한도 350/400만 원
+- 스테이킹: 코스모스 100만 원·12개월 → 실수령 보상 125.6348 ATOM(21만 2,700원), 손익분기 하락률 17.54%, `(1+보상률)(1-h)=1` 항등식과 수수료 10% 관계(실수령 = 수수료 전 × 0.9) 검증
 
 ## 참고
 

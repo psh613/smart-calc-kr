@@ -639,7 +639,160 @@
     };
   }
 
+  /* ══ 업비트 스테이킹 (2026-11-25 기준) ══════════════════════════
+   * 1차 출처
+   *  · 수수료: "스테이킹 보상의 10%를 검증 수수료로 공제 후 분배, 이 외 별도
+   *    수수료 없음" — 업비트 고객센터 「스테이킹 서비스 이용 수수료가 있나요?」
+   *  · 연 추정 보상률: 신청 화면의 값은 "수수료 공제 후 실제 분배받은 보상을
+   *    연 단위로 환산"한 값. 그래서 수수료 전 보상은 실수령 보상의 1/9만큼 많다.
+   *  · 보상은 스테이킹 수량에 더해져 네트워크상 다시 스테이킹된다(자동 복리).
+   *    → 기간 보상은 자산별 지급 주기(cycleDays) 단위로 복리 계산한다.
+   *  · 대기기간·현재가·52주 최고/최저: 2026-11-25 14:03 KST 확인.
+   *    (가격은 업비트 공개 시세 API KRW 마켓 종가)
+   */
+  var STAKING2026 = {
+    feeRate: 0.10,
+    asOf: '2026-11-25 14:03 KST',
+    daysPerMonth: 365 / 12,
+    assets: [
+      { key: 'ETH', name: '이더리움', ticker: 'ETH', price: 2257000, apr: 0.0276,
+        minQty: 0.02, stakeWaitDays: 12, unstakeDays: 10, cycleDays: 1,
+        firstRewardDelayDays: 0, high52: 5108000, low52: 2125000 },
+      { key: 'SOL', name: '솔라나', ticker: 'SOL', price: 93450, apr: 0.0467,
+        minQty: 0.01, stakeWaitDays: 2 / 24, unstakeDays: 3, cycleDays: 2,
+        firstRewardDelayDays: 0, high52: 217500, low52: 89850 },
+      { key: 'ATOM', name: '코스모스', ticker: 'ATOM', price: 1693, apr: 0.1929,
+        minQty: 0.05, stakeWaitDays: 1 / 24, unstakeDays: 22, cycleDays: 1,
+        firstRewardDelayDays: 0, high52: 3954, low52: 1562 },
+      { key: 'ADA', name: '에이다', ticker: 'ADA', price: 194, apr: 0.0192,
+        minQty: null, stakeWaitDays: 6 / 24, unstakeDays: 2 / 24, cycleDays: 5,
+        firstRewardDelayDays: 20, high52: 715, low52: 184 },
+      { key: 'POL', name: '폴리곤', ticker: 'POL', price: 102, apr: 0.0655,
+        minQty: 2.7, stakeWaitDays: 3 / 24, unstakeDays: 3, cycleDays: 1,
+        firstRewardDelayDays: 0, high52: 275, low52: 99.1 },
+      { key: 'CRO', name: '크로노스', ticker: 'CRO', price: 53.3, apr: 0.0352,
+        minQty: 10, stakeWaitDays: 1 / 24, unstakeDays: 29, cycleDays: 1,
+        firstRewardDelayDays: 0, high52: 171, low52: 52.4 }
+    ]
+  };
+
+  function pickNum(v, fallback) {
+    if (v === null || v === undefined || v === '') return fallback;
+    var n = Number(v);
+    return isFinite(n) ? n : fallback;
+  }
+
+  function stakingAsset(key) {
+    var k = String(key || '').toUpperCase();
+    for (var i = 0; i < STAKING2026.assets.length; i++) {
+      if (STAKING2026.assets[i].key === k) return STAKING2026.assets[i];
+    }
+    return STAKING2026.assets[0];
+  }
+
+  /* 기간 보상(복리) → 손익분기 하락률까지 한 번에 계산한다.
+   * 손익분기 하락률 h*는 (1 + 기간보상률)(1 - h*) = 1 을 만족하는 값,
+   * 즉 "언스테이킹 대기 중 시세가 h*만큼 빠지면 보상으로 번 것이 0이 되는" 수준이다.
+   */
+  function computeStaking(input) {
+    input = input || {};
+    var a = stakingAsset(input.assetKey);
+    var amount = Math.max(0, num(input.amount));
+    var price = Math.max(0, pickNum(input.price, a.price));
+    var aprPct = clamp(pickNum(input.aprPct, a.apr * 100), 0, 100);
+    var months = clamp(pickNum(input.months, 12), 1, 60);
+    var unstakeDays = clamp(pickNum(input.unstakeDays, a.unstakeDays), 0, 365);
+    var stakeWaitDays = clamp(pickNum(input.stakeWaitDays, a.stakeWaitDays), 0, 365);
+    var dropPct = clamp(num(input.expectedDropPct), 0, 100);
+    var feeRate = STAKING2026.feeRate;
+
+    var apr = aprPct / 100;
+    var qty = price > 0 ? amount / price : 0;
+    var days = Math.round(months * STAKING2026.daysPerMonth);
+    var cycle = Math.max(1, a.cycleDays);
+    var rewardDays = Math.max(0, days - a.firstRewardDelayDays);
+
+    /* 자동 재스테이킹(복리): 지급 주기마다 보상이 수량에 더해진다 */
+    var cycleRate = apr * cycle / 365;
+    var endQty = qty * Math.pow(1 + cycleRate, rewardDays / cycle);
+    var netRewardQty = Math.max(0, endQty - qty);
+    var simpleRewardQty = qty * apr * rewardDays / 365;
+
+    /* 표시 보상률이 이미 수수료 공제 후이므로 수수료 전 보상 = 실수령 × 10/9 */
+    var grossRewardQty = netRewardQty / (1 - feeRate);
+    var feeQty = grossRewardQty - netRewardQty;
+
+    var periodReturn = qty > 0 ? netRewardQty / qty : 0;
+    var breakEvenDrop = periodReturn / (1 + periodReturn);
+    var breakEvenPrice = price * (1 - breakEvenDrop);
+    var dailyAllowance = unstakeDays > 0 ? breakEvenDrop / unstakeDays : 0;
+
+    var drop = dropPct / 100;
+    var endPrice = price * (1 - drop);
+    var valueAtExit = endQty * endPrice;
+    var priceLossKrw = qty * price * drop;
+    var rewardKrwAfterDrop = netRewardQty * endPrice;
+    var netPnlKrw = valueAtExit - amount;
+    var netPnlRate = amount > 0 ? netPnlKrw / amount : 0;
+
+    /* 1년 중 실제로 보상이 붙는 날 = 365 − 스테이킹 대기 − 언스테이킹 대기 */
+    var effDays = Math.max(0, 365 - stakeWaitDays - unstakeDays);
+    var effAnnual = apr * effDays / 365;
+
+    var minQty = a.minQty;
+    var minAmount = minQty === null ? null : minQty * price;
+
+    return {
+      assetKey: a.key,
+      assetName: a.name,
+      ticker: a.ticker,
+      price: price,
+      amount: amount,
+      qty: qty,
+      aprPct: aprPct,
+      apr: apr,
+      months: months,
+      days: days,
+      cycleDays: cycle,
+      firstRewardDelayDays: a.firstRewardDelayDays,
+      rewardDays: rewardDays,
+      stakeWaitDays: stakeWaitDays,
+      unstakeDays: unstakeDays,
+      feeRate: feeRate,
+      simpleRewardQty: simpleRewardQty,
+      netRewardQty: netRewardQty,
+      grossRewardQty: grossRewardQty,
+      feeQty: feeQty,
+      endQty: endQty,
+      simpleRewardKrw: simpleRewardQty * price,
+      netRewardKrw: netRewardQty * price,
+      grossRewardKrw: grossRewardQty * price,
+      feeKrw: feeQty * price,
+      periodReturn: periodReturn,
+      breakEvenDrop: breakEvenDrop,
+      breakEvenPrice: breakEvenPrice,
+      dailyAllowance: dailyAllowance,
+      expectedDropPct: dropPct,
+      endPrice: endPrice,
+      valueAtExit: valueAtExit,
+      priceLossKrw: priceLossKrw,
+      rewardKrwAfterDrop: rewardKrwAfterDrop,
+      netPnlKrw: netPnlKrw,
+      netPnlRate: netPnlRate,
+      effDays: effDays,
+      effAnnual: effAnnual,
+      minQty: minQty,
+      minAmount: minAmount,
+      minQtyOk: minQty === null ? null : qty + 1e-12 >= minQty,
+      high52: a.high52,
+      low52: a.low52
+    };
+  }
+
   root.CalcCore = {
+    STAKING2026: STAKING2026,
+    stakingAsset: stakingAsset,
+    computeStaking: computeStaking,
     R2026: R2026,
     marginalRate: marginalRate,
     estimateTaxContext: estimateTaxContext,

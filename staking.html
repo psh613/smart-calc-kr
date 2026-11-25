@@ -1,0 +1,257 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>업비트 스테이킹 실수령 수익 &amp; 언스테이킹 손익분기 계산기 — 2026 | 스마트계산기</title>
+<meta name="description" content="업비트 스테이킹 보상에서 검증 수수료 10%를 뗀 실수령 수익과, 언스테이킹 대기(최대 22일) 중 시세가 몇 % 빠지면 보상이 상쇄되는지 계산합니다. 2026년 11월 25일 기준 6종 보상률·대기기간 반영.">
+<link rel="canonical" href="https://smart-calc-kr.pages.dev/staking">
+<meta name="robots" content="index,follow">
+<meta property="og:type" content="website">
+<meta property="og:title" content="업비트 스테이킹 실수령 수익 &amp; 언스테이킹 손익분기 계산기">
+<meta property="og:description" content="수수료 10%를 뗀 실수령 보상과, 언스테이킹 대기 중 시세 하락 손익분기를 2026년 11월 25일 기준 보상률로 계산합니다.">
+<meta property="og:url" content="https://smart-calc-kr.pages.dev/staking">
+<meta property="og:site_name" content="스마트계산기">
+<meta property="og:locale" content="ko_KR">
+<link rel="icon" href="favicon.svg" type="image/svg+xml">
+<link rel="stylesheet" href="assets/style.css">
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@type": "WebApplication",
+  "name": "업비트 스테이킹 실수령 수익 & 언스테이킹 손익분기 계산기",
+  "applicationCategory": "FinanceApplication",
+  "operatingSystem": "All",
+  "inLanguage": "ko",
+  "url": "https://smart-calc-kr.pages.dev/staking",
+  "description": "업비트 스테이킹 6종의 실수령 보상(수수료 10% 차감 후)과 언스테이킹 대기 중 시세 하락 손익분기점을 계산합니다.",
+  "offers": { "@type": "Offer", "price": "0", "priceCurrency": "KRW" }
+}
+</script>
+</head>
+<body>
+<header class="site-header">
+  <div class="wrap header-inner">
+    <a class="brand" href="index.html"><span class="brand-mark">∑</span>스마트계산기 <span class="thin">smart-calc</span></a>
+    <nav class="site-nav" aria-label="주요 계산기">
+      <a href="index.html">홈</a>
+      <a href="salary.html">연봉 실수령</a>
+      <a href="rent-tax.html">월세 공제</a>
+      <a href="card-tax.html">카드 공제</a>
+      <a href="crypto.html">코인 계산기</a>
+      <a href="staking.html" aria-current="page">스테이킹</a>
+      <a href="compound.html">복리·적립식</a>
+    </nav>
+  </div>
+</header>
+
+<main class="wrap">
+  <div class="page-head">
+    <span class="eyebrow">코인 · 2026-11-25 기준</span>
+    <h1>업비트 스테이킹 실수령 수익 &amp; 언스테이킹 손익분기</h1>
+    <p class="lede">스테이킹 보상은 <strong>보상의 10%를 검증 수수료로 떼고</strong> 들어옵니다. 그리고 그 코인을 팔려면 <strong>언스테이킹 대기</strong>(최대 22일)를 거쳐야 합니다. 이 두 가지를 반영한 실수령 보상과, 대기 중 시세가 몇 % 빠지면 보상이 통째로 사라지는지 계산합니다.</p>
+  </div>
+
+  <section class="card">
+    <div class="field">
+      <span class="label">스테이킹할 코인 (업비트 지원 6종)</span>
+      <div class="chips" id="coin-chips" role="group" aria-label="스테이킹 코인 선택">
+        <button type="button" class="chip" data-value="ETH">이더리움 ETH</button>
+        <button type="button" class="chip" data-value="SOL">솔라나 SOL</button>
+        <button type="button" class="chip" data-value="ATOM" aria-pressed="true">코스모스 ATOM</button>
+        <button type="button" class="chip" data-value="ADA">에이다 ADA</button>
+        <button type="button" class="chip" data-value="POL">폴리곤 POL</button>
+        <button type="button" class="chip" data-value="CRO">크로노스 CRO</button>
+      </div>
+      <span class="hint">코인을 고르면 현재가·연 추정 보상률·언스테이킹 대기일이 그 종목 값으로 채워집니다. 그 뒤에 직접 고쳐도 됩니다.</span>
+    </div>
+
+    <div class="grid-2">
+      <div class="field">
+        <label for="amount">스테이킹할 금액</label>
+        <div class="input-wrap"><input id="amount" class="unit" type="number" inputmode="numeric" min="0" step="100000" value="1000000"><span class="unit-suffix">원</span></div>
+        <div class="chips" id="amount-presets" role="group" aria-label="금액 빠른 선택">
+          <button class="chip" type="button" data-value="500000">50만</button>
+          <button class="chip" type="button" data-value="1000000">100만</button>
+          <button class="chip" type="button" data-value="3000000">300만</button>
+          <button class="chip" type="button" data-value="10000000">1,000만</button>
+        </div>
+        <span class="hint">이 금액으로 살 수 있는 수량을 기준으로 계산합니다.</span>
+      </div>
+      <div class="field">
+        <label for="price">현재가 (1코인)</label>
+        <div class="input-wrap"><input id="price" class="unit" type="number" inputmode="numeric" min="0" step="1" value="1693"><span class="unit-suffix">원</span></div>
+        <span class="hint">기본값은 2026-11-25 14:03 업비트 KRW 시세입니다. 지금 시세로 다시 계산하려면 값을 바꾸세요.</span>
+      </div>
+      <div class="field">
+        <label for="apr">연 추정 보상률</label>
+        <div class="input-wrap"><input id="apr" class="unit" type="number" inputmode="decimal" min="0" max="100" step="0.01" value="19.29"><span class="unit-suffix">%</span></div>
+        <span class="hint">업비트 신청 화면의 값은 <strong>수수료 10%를 이미 뗀 뒤</strong>의 보상률입니다. 1주일마다 갱신되니 신청 전에 다시 확인하세요.</span>
+      </div>
+      <div class="field">
+        <label for="months">스테이킹 기간</label>
+        <div class="input-wrap"><input id="months" class="unit" type="number" inputmode="numeric" min="1" max="60" step="1" value="12"><span class="unit-suffix">개월</span></div>
+        <span class="hint">보상은 지급 주기마다 다시 스테이킹되어 복리로 쌓입니다.</span>
+      </div>
+      <div class="field">
+        <label for="unstake-days">언스테이킹 대기일</label>
+        <div class="input-wrap"><input id="unstake-days" class="unit" type="number" inputmode="decimal" min="0" max="365" step="0.1" value="22"><span class="unit-suffix">일</span></div>
+        <span class="hint">코인사마다 다릅니다. 코스모스 22일·크로노스 29일·솔라나 3일·에이다 2시간, 이더리움은 대기열에 따라 변동(2026-11-25 기준 10일)입니다.</span>
+      </div>
+      <div class="field">
+        <label for="drop">대기 중 예상 시세 하락률</label>
+        <div class="input-wrap"><input id="drop" class="unit" type="number" inputmode="decimal" min="0" max="100" step="1" value="10"><span class="unit-suffix">%</span></div>
+        <span class="hint">해제를 기다리는 동안 코인 가격이 이만큼 빠진다고 가정한 시나리오입니다.</span>
+      </div>
+    </div>
+  </section>
+
+  <section class="result" aria-live="polite" aria-atomic="true">
+    <span class="result-label">언스테이킹 대기 중 손익분기 시세 하락률</span>
+    <strong class="result-value" id="breakeven">—</strong>
+    <span class="result-sub" id="breakeven-sub">—</span>
+    <div class="result-grid">
+      <div><span>실수령 보상 (수수료 후)</span><strong id="reward">—</strong></div>
+      <div><span>검증 수수료 10%</span><strong id="fee">—</strong></div>
+      <div><span>1년 실효 보상률</span><strong id="eff-annual">—</strong></div>
+      <div><span>예상 하락 시 순손익</span><strong id="net-pnl">—</strong></div>
+    </div>
+  </section>
+
+  <section class="card" aria-labelledby="detail-title">
+    <h2 id="detail-title" style="margin-top:0">계산 상세</h2>
+    <div class="table-wrap">
+      <table>
+        <thead>
+          <tr><th scope="col">항목</th><th scope="col">값</th></tr>
+        </thead>
+        <tbody id="detail-rows"></tbody>
+      </table>
+    </div>
+    <p class="data-note" id="min-note">—</p>
+    <p class="data-note" id="fee-note">—</p>
+    <p class="data-note" id="break-even-note">—</p>
+    <p class="data-note" id="eff-note">—</p>
+  </section>
+
+  <section class="card" aria-labelledby="asset-title">
+    <h2 id="asset-title" style="margin-top:0">업비트 스테이킹 6종 비교</h2>
+    <div class="table-wrap">
+      <table>
+        <thead>
+          <tr><th scope="col">종목</th><th scope="col">연 보상률</th><th scope="col">언스테이킹</th><th scope="col">실수령 보상</th><th scope="col">손익분기 하락</th><th scope="col">대기 하루당</th></tr>
+        </thead>
+        <tbody id="asset-rows"></tbody>
+      </table>
+    </div>
+    <p class="data-note" id="asset-caption">—</p>
+    <p class="data-note">보상률은 2026-11-25 14:03 업비트 스테이킹 신청 화면의 연 추정 보상률을 그대로 썼습니다. 이 숫자는 지난 1주일 실제 분배분을 연 단위로 환산한 값이라 매주 화요일에 바뀌고, 코인 가격이 오르내린 만큼의 수익·손실은 여기에 들어 있지 않습니다.</p>
+  </section>
+
+  <section class="card" aria-labelledby="period-title">
+    <h2 id="period-title" style="margin-top:0">기간별로 보면</h2>
+    <div class="table-wrap">
+      <table>
+        <thead>
+          <tr><th scope="col">기간</th><th scope="col">실수령 보상</th><th scope="col">보상률</th><th scope="col">손익분기 하락</th><th scope="col">대기 하루당</th></tr>
+        </thead>
+        <tbody id="period-rows"></tbody>
+      </table>
+    </div>
+    <p class="data-note" id="period-caption">—</p>
+  </section>
+
+  <section class="card" aria-labelledby="drop-title">
+    <h2 id="drop-title" style="margin-top:0">대기 중 시세가 빠지면</h2>
+    <div class="table-wrap">
+      <table>
+        <thead>
+          <tr><th scope="col">시세 하락률</th><th scope="col">해제 시세</th><th scope="col">최종 평가금</th><th scope="col">순손익</th><th scope="col">판정</th></tr>
+        </thead>
+        <tbody id="drop-rows"></tbody>
+      </table>
+    </div>
+    <p class="data-note" id="drop-caption">—</p>
+    <p class="data-note">판정은 스테이킹 보상과 시세 하락만 비교한 것입니다. 스테이킹하지 않고 그냥 들고 있었다면 같은 하락률만큼 똑같이 손실을 봤다는 점도 함께 보세요. 스테이킹이 지켜 주는 것은 <strong>보상만큼의 완충</strong>이지 원금이 아닙니다.</p>
+  </section>
+
+  <h2>계산 공식</h2>
+  <div class="card card-tight">
+    <p><strong>① 실수령 보상 (수수료 10% 차감 후)</strong><br>
+    보상 수량 = 스테이킹 수량 × (1 + 연보상률 × 지급주기 ÷ 365)<sup>보상일수 ÷ 지급주기</sup> − 스테이킹 수량<br>
+    · 지급 주기: ETH·ATOM·POL·CRO 매일, SOL 2일, ADA 5일 — 받은 보상이 수량에 더해져 다시 스테이킹되므로 복리로 계산합니다.</p>
+    <p><strong>② 수수료 전 보상과 검증 수수료</strong><br>
+    수수료 전 보상 = 실수령 보상 ÷ 0.9 · 검증 수수료 10% = 실수령 보상 ÷ 9<br>
+    · 업비트 화면의 &ldquo;연 추정 보상률&rdquo;은 이미 수수료를 뗀 값입니다. 그래서 수수료 전 보상은 실수령의 10/9배가 됩니다.</p>
+    <p><strong>③ 언스테이킹 손익분기 하락률</strong><br>
+    (1 + 기간 보상률) × (1 − h) = 1 → <strong>h = 기간 보상률 ÷ (1 + 기간 보상률)</strong><br>
+    · 대기 하루당 허용 폭 = h ÷ 언스테이킹 대기일</p>
+    <p style="margin-bottom:0"><strong>④ 대기 중 하락 시 순손익</strong><br>
+    최종 평가금 = (수량 + 실수령 보상) × 시세 × (1 − 하락률) · 순손익 = 최종 평가금 − 투자금<br>
+    · 1년 실효 보상률 = 연보상률 × (365 − 스테이킹 대기 − 언스테이킹 대기) ÷ 365</p>
+  </div>
+
+  <h2>2026년 11월 25일 기준으로 확인한 것</h2>
+  <div class="card card-tight">
+    <ul>
+      <li><strong>수수료</strong>: 스테이킹 보상의 <strong>10%를 검증 수수료</strong>로 공제한 뒤 분배하며, 그 외 별도 수수료는 없습니다(개인·법인 동일) — 업비트 고객센터 「스테이킹 서비스 이용 수수료가 있나요?」</li>
+      <li><strong>연 추정 보상률</strong>(수수료 공제 후, 2026-11-25 14:03 신청 화면): 이더리움 <strong>2.76%</strong>, 솔라나 <strong>4.67%</strong>, 코스모스 <strong>19.29%</strong>, 에이다 <strong>1.92%</strong>, 폴리곤 <strong>6.55%</strong>, 크로노스 <strong>3.52%</strong>. 지난 1주일 분배분을 연 단위로 환산해 매주 갱신하는 값입니다.</li>
+      <li><strong>보상 지급 주기</strong>: 이더리움·코스모스·폴리곤·크로노스 매일, 솔라나 약 2일(1 Epoch), 에이다 약 5일(1 Epoch). 에이다는 <strong>첫 보상이 스테이킹 완료 후 약 20일</strong>(4 Epoch) 뒤입니다 — 업비트 고객센터 「스테이킹 보상이 궁금해요」</li>
+      <li><strong>언스테이킹 대기</strong>: 코스모스 약 22일, 크로노스 약 29일, 솔라나 약 3일, 폴리곤 약 3일, 에이다 약 2시간, 이더리움은 네트워크 대기열에 따라 변동(2026-11-25 신청 화면 10일) — 업비트 고객센터 「스테이킹과 언스테이킹은 시간이 얼마나 걸리나요?」</li>
+      <li><strong>스테이킹 대기</strong>: 이더리움은 2026-11-25 기준 약 12일(대기열에 따라 변동). 나머지는 1~6시간입니다. <strong>대기 중에는 보상이 발생하지 않습니다.</strong></li>
+      <li><strong>최소 신청 수량</strong>: 이더리움 0.02 ETH·솔라나 0.01 SOL(업비트 공지), 코스모스 0.05 ATOM(2022년 서비스 시작 공지), 폴리곤 2.7 POL(신청 화면 표기), 크로노스 10 CRO(2026-01-06 공지). 에이다는 공개된 1차 출처에서 확인하지 못했습니다.</li>
+      <li><strong>취소 불가</strong>: 본인인증까지 마친 스테이킹·언스테이킹 신청은 취소할 수 없습니다 — 업비트 고객센터</li>
+      <li><strong>보호 대상 아님</strong>: 스테이킹 상품은 자본시장법·금융소비자보호법의 보호를 받는 금융상품이 아니며, 보상률과 원금(코인 가격) 모두 보장되지 않습니다 — 업비트 공지</li>
+      <li><strong>2026-11-25 시세 위치</strong>: 6종 모두 52주 최저가보다 2~8% 높은 수준입니다(이더리움 2,257,000원 / 52주 2,125,000~5,108,000원, 코스모스 1,693원 / 1,562~3,954원). 최근 1년 낙폭이 큰 구간이라 보상률보다 가격 변동이 결과를 좌우합니다.</li>
+    </ul>
+  </div>
+
+  <h2>실제 예시</h2>
+  <div class="card card-tight">
+    <p><strong>예시 1 — 코스모스(ATOM) 100만 원, 연 19.29%, 12개월</strong><br>
+    100만 원으로 590.6675 ATOM을 사서 1년 스테이킹하면, 수수료 전 보상은 139.5942 ATOM(23만 6,333원), 검증 수수료 10% 13.9594 ATOM(2만 3,633원)을 빼고 <strong>125.6348 ATOM(21만 2,700원, +21.27%)</strong>이 쌓입니다. 이 상태에서 해제에 22일이 걸리므로, 그동안 시세가 <strong>17.54%(1,396원 아래로)</strong> 빠지면 보상으로 번 것을 전부 반납합니다. 하루로 나누면 0.80%씩입니다. 시세가 10% 빠진다고 가정하면 보상 19만 1,430원에서 시세 손실 10만 원을 빼고 <strong>+9만 1,430원(+9.14%)</strong>이 남습니다.</p>
+    <p><strong>예시 2 — 이더리움(ETH) 300만 원, 연 2.76%, 12개월</strong><br>
+    1.3292 ETH를 스테이킹하면 실수령 보상은 0.0372 ETH로 <strong>8만 3,950원(+2.80%)</strong>입니다. 그런데 해제에 10일이 걸리고, 보상이 2.72%(2,195,561원) 하락만으로 사라집니다. 대기 중 시세가 5%만 빠져도 시세 손실 15만 원이 보상 8만 원을 넘어 <strong>−7만 247원</strong>이 됩니다.</p>
+    <p style="margin-bottom:0"><strong>예시 3 — 에이다(ADA) 100만 원, 연 1.92%, 12개월</strong><br>
+    해제는 2시간이면 되지만 첫 보상이 약 20일 뒤라 1년 중 보상이 붙는 날은 345일입니다. 실수령 보상은 94.3876 ADA로 <strong>1만 8,311원(+1.83%)</strong>, 손익분기 하락률은 1.80%(190.51원)입니다. 대기 기간이 짧아 시세에 노출되는 시간은 적지만, 보상 자체가 작아 10% 하락이면 <strong>−8만 3,520원</strong>입니다.</p>
+  </div>
+
+  <h2>자주 묻는 질문</h2>
+  <details class="faq"><summary>업비트에 뜨는 연 추정 보상률만큼 받는다고 보면 되나요?</summary>
+    <div class="faq-body"><p>그 숫자는 지난 1주일 실제로 분배된 보상을 연 단위로 환산한 값이고, 이미 수수료 10%를 뗀 뒤의 값입니다. 매주 갱신되므로 신청하는 주에 따라 달라지고, 네트워크 전체 스테이킹 물량이 늘면 낮아집니다. 이 계산기는 입력한 보상률이 1년 내내 유지된다고 가정하지만, 실제로는 6종 모두 지난 3개월 사이 최소·최대 폭이 1~2%p씩 벌어져 있었습니다.</p><p>또 하나 빠지기 쉬운 것이 대기 기간입니다. 스테이킹이 완료되기 전까지(이더리움은 대기열에 따라 12일)와 언스테이킹을 신청한 뒤(코스모스 22일)에는 보상이 붙지 않습니다. 그래서 표시된 보상률에 365일을 그대로 곱하면 실제보다 조금 높게 나옵니다. 위 계산기의 &ldquo;1년 실효 보상률&rdquo;이 대기일을 뺀 값입니다.</p></div>
+  </details>
+  <details class="faq"><summary>언스테이킹 22일 사이에 시세가 빠지면 얼마나 잃나요?</summary>
+    <div class="faq-body"><p>손실은 &ldquo;대기 중 하락률 × 스테이킹한 금액&rdquo;으로, 보상은 &ldquo;기간 보상률 × 금액&rdquo;으로 계산됩니다. 둘이 같아지는 지점이 손익분기 하락률입니다. 예를 들어 코스모스를 1년 스테이킹해 수량이 21.27% 늘었다면, 해제 대기 중 17.54%까지는 보상으로 버팁니다. 반대로 이더리움은 1년 보상이 2.80%뿐이라 2.72% 하락만으로 보상이 사라집니다.</p><p>대기 기간이 긴 코인은 같은 하락률이라도 하루에 감당해야 하는 폭이 작습니다. 코스모스는 22일에 17.54%를 나눠 하루 0.80%, 이더리움은 10일에 2.72%라 하루 0.27%입니다. 즉 코스모스는 하루 0.8%씩 빠지는 급락에도 견디고, 이더리움은 하루 0.3% 하락에도 보상이 상쇄됩니다. 보상률이 높은 코인이 대기 기간도 길어 완충 폭이 큰 구조입니다.</p></div>
+  </details>
+  <details class="faq"><summary>신청을 취소하거나 중간에 뺄 수 있나요?</summary>
+    <div class="faq-body"><p>본인인증까지 마친 스테이킹 신청은 취소할 수 없습니다. 스테이킹이 완료된 뒤에야 언스테이킹을 신청할 수 있고, 그 신청도 취소가 안 됩니다. 그래서 업비트는 신청 전에 스테이킹 대기기간과 완료 예상 시간, 첫 보상 지급 예정일을 확인하라고 안내합니다. 대기 중인 수량에는 보상도 붙지 않습니다.</p><p>최소 신청 수량도 코인마다 다릅니다(이더리움 0.02, 솔라나 0.01, 코스모스 0.05, 폴리곤 2.7, 크로노스 10). 이 계산기 위쪽의 &ldquo;스테이킹할 금액&rdquo;을 최소 수량 아래로 낮추면 조건을 못 채운다는 안내가 나옵니다. 수량이 애매하면 보유 수량 전체가 아니라 일부만 넣는 편이 안전합니다.</p></div>
+  </details>
+
+  <div class="card card-tight">
+    <p style="margin:0"><strong>함께 보면 좋은 글</strong><br>
+    수수료 10%와 언스테이킹 22일이 실제로 어떻게 계산되는지는 <a href="https://coin-director.tistory.com/8" target="_blank" rel="noopener">업비트 스테이킹 수수료와 언스테이킹 기간 정리</a>에서, 종목별 수익률을 더 넓게 비교하려면 <a href="https://coin-director.tistory.com/9" target="_blank" rel="noopener">업비트 스테이킹 종류별 수익률</a>을 보세요. 스테이킹한 코인의 평단가와 본전 시세는 <a href="crypto.html">코인 물타기·청산가 계산기</a>에서 이어서 계산할 수 있습니다.</p>
+  </div>
+
+  <div class="notice">
+    <strong>참고용 안내</strong><br>
+    이 계산기는 투자 권유가 아니며, 특정 코인을 추천하지 않습니다. 보상률·대기기간·최소 수량은 업비트 정책과 네트워크 상황에 따라 수시로 바뀌므로 신청 화면의 최신 값을 확인하세요. 가상자산 가격은 원금을 보장하지 않고, 스테이킹 기간과 대기 기간에는 매도·출금이 제한됩니다. 가상자산 소득 과세는 시행 시기와 기준이 확정되지 않아 이 계산에 반영하지 않았습니다. 기준일 2026-11-25.
+  </div>
+</main>
+
+<footer class="site-footer">
+  <div class="wrap">
+    <nav class="footer-nav" aria-label="사이트 정보">
+      <a href="index.html">홈</a>
+      <a href="about.html">사이트 소개</a>
+      <a href="privacy.html">개인정보처리방침</a>
+    </nav>
+    <p>스마트계산기 — 생활·금융·투자 계산기를 한 곳에. 모든 계산은 브라우저에서만 이루어지며 입력값은 저장·전송되지 않습니다.</p>
+    <p class="copy">© <span id="year">2026</span> smart-calc-kr · 최종 업데이트 2026-11-25</p>
+  </div>
+</footer>
+
+<script src="assets/calc-core.js"></script>
+<script src="assets/ui.js"></script>
+<script src="assets/staking.js"></script>
+</body>
+</html>

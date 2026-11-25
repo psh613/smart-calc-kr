@@ -427,6 +427,134 @@ for bad in [{"grossSalary": 0, "creditCard": 0, "debitCash": 0},
         if isinstance(v, (int, float)) and not isinstance(v, bool):
             check(f"카드 {bad['grossSalary']} {key} 유한", math.isfinite(v), f"{key}={v}")
 
+# ── 10. 업비트 스테이킹 ──────────────────────────────────────
+
+def st(payload):
+    return call("computeStaking", payload)
+
+# 코스모스 100만 원 · 12개월 · 해제 22일 기본 예시
+a1 = st({"assetKey": "ATOM", "amount": 1_000_000, "months": 12})
+near("ATOM 수량 = 금액÷현재가", a1["qty"], 1_000_000 / 1693, tol=1e-9)
+near("ATOM 연 보상률", a1["aprPct"], 19.29, tol=1e-9)
+check("ATOM 해제 대기 22일", a1["unstakeDays"] == 22, a1["unstakeDays"])
+near("ATOM 실수령 보상량", a1["netRewardQty"], 125.6348, tol=0.001)
+near("ATOM 실수령 보상액", a1["netRewardKrw"], 212_700, tol=1)
+near("ATOM 수수료 = 실수령÷9", a1["feeQty"], a1["netRewardQty"] / 9, tol=1e-9)
+near("ATOM 수수료 전 = 실수령÷0.9", a1["grossRewardQty"], a1["netRewardQty"] / 0.9, tol=1e-9)
+near("ATOM 기간 보상률", a1["periodReturn"], 0.2127, tol=0.0002)
+near("ATOM 손익분기 하락률", a1["breakEvenDrop"], 0.17539, tol=0.0002)
+near("ATOM 손익분기 시세", a1["breakEvenPrice"], 1396.06, tol=0.1)
+near("ATOM 대기 하루당", a1["dailyAllowance"], 0.17539 / 22, tol=1e-6)
+near("ATOM 1년 실효 보상률", a1["effAnnual"], 0.1929 * (365 - 1 / 24 - 22) / 365, tol=1e-9)
+near("ATOM 하락 10% 순손익", st({"assetKey": "ATOM", "amount": 1_000_000, "months": 12,
+                                  "expectedDropPct": 10})["netPnlKrw"], 91_429.74, tol=1)
+check("ATOM 최소 수량 충족", a1["minQtyOk"] is True, a1["minQtyOk"])
+near("ATOM 최소 수량 금액", a1["minAmount"], 0.05 * 1693, tol=1e-6)
+
+# 복리 반영: 단리보다 많고, 지급 주기가 짧을수록 복리 효과가 크다
+check("ATOM 복리 > 단리", a1["netRewardQty"] > a1["simpleRewardQty"],
+      f"{a1['netRewardQty']} vs {a1['simpleRewardQty']}")
+
+# 손익분기 정의: (1+기간보상률)(1-h)=1
+def breakeven_ok(r):
+    return abs((1 + r["periodReturn"]) * (1 - r["breakEvenDrop"]) - 1) < 1e-12
+
+# 손익분기만큼 빠지면 순손익 0
+a2 = st({"assetKey": "ATOM", "amount": 1_000_000, "months": 12,
+         "expectedDropPct": a1["breakEvenDrop"] * 100})
+near("손익분기 시 순손익 0", a2["netPnlKrw"], 0, tol=1e-6)
+check("손익분기 시 판정 본전", abs(a2["netPnlRate"]) < 1e-9, a2["netPnlRate"])
+
+# 6종 전부: 보상률별 손인분기 관계, 유한값, 최소 수량 정보
+for asset in json.loads(q.eval("JSON.stringify(CalcCore.STAKING2026.assets)")):
+    key = asset["key"]
+    for months in (1, 6, 12, 24, 60):
+        r = st({"assetKey": key, "amount": 3_000_000, "months": months})
+        check(f"{key} {months}개월 손익분기 정의", breakeven_ok(r), f"{r['periodReturn']}/{r['breakEvenDrop']}")
+        for k, v in r.items():
+            if isinstance(v, (int, float)) and not isinstance(v, bool):
+                check(f"{key} {months}개월 {k} 유한", math.isfinite(v), f"{k}={v}")
+        check(f"{key} {months}개월 대기 하루당 = 손익분기÷대기",
+              abs(r["dailyAllowance"] * r["unstakeDays"] - r["breakEvenDrop"]) < 1e-12,
+              f"{r['dailyAllowance']}×{r['unstakeDays']}")
+        check(f"{key} 실효 보상률 ≤ 연 보상률", r["effAnnual"] <= r["apr"] + 1e-12, r["effAnnual"])
+
+# 업비트 공개 값 대조 (2026-11-25 14:03 신청 화면·시세 API)
+EXPECT = {
+    "ETH": (2.76, 10, 0.02, 2_257_000),
+    "SOL": (4.67, 3, 0.01, 93_450),
+    "ATOM": (19.29, 22, 0.05, 1_693),
+    "ADA": (1.92, 2 / 24, None, 194),
+    "POL": (6.55, 3, 2.7, 102),
+    "CRO": (3.52, 29, 10, 53.3),
+}
+for key, (apr, days, minq, price) in EXPECT.items():
+    a = json.loads(q.eval(f"JSON.stringify(CalcCore.stakingAsset('{key}'))"))
+    near(f"{key} 공개 보상률", a["apr"] * 100, apr, tol=1e-9)
+    near(f"{key} 공개 대기일", a["unstakeDays"], days, tol=1e-9)
+    near(f"{key} 공개 현재가", a["price"], price, tol=1e-9)
+    check(f"{key} 최소 수량", a["minQty"] == minq, f"{a['minQty']} vs {minq}")
+
+# 에이다는 첫 보상이 약 20일 뒤 → 보상일수에서 빠진다
+ada = st({"assetKey": "ADA", "amount": 1_000_000, "months": 12})
+check("ADA 보상일수 345일", ada["rewardDays"] == 345, ada["rewardDays"])
+check("ADA 첫 보상 지연 반영", ada["periodReturn"] < ada["apr"] - 0.0005,
+      f"{ada['periodReturn']} vs {ada['apr']}")
+check("ADA 345일치 보상률", abs(ada["periodReturn"] - (math.pow(1 + 0.0192 * 5 / 365, 69) - 1)) < 1e-9,
+      ada["periodReturn"])
+check("ADA 최소 수량은 미확인(null)", ada["minQty"] is None and ada["minQtyOk"] is None, ada["minQtyOk"])
+
+# 이더리움 300만 원 · 하락 5% → 보상보다 시세 손실이 크다
+eth = st({"assetKey": "ETH", "amount": 3_000_000, "months": 12, "expectedDropPct": 5})
+near("ETH 실수령 보상액", eth["netRewardKrw"], 83_950, tol=1)
+near("ETH 손익분기 하락률", eth["breakEvenDrop"], 0.02722, tol=0.00002)
+near("ETH 5% 하락 순손익", eth["netPnlKrw"], -70_247.49, tol=1)
+check("ETH 5% 하락 판정", eth["netPnlKrw"] < 0, eth["netPnlKrw"])
+near("ETH 시세 손실 = 금액×하락률", eth["priceLossKrw"], 150_000, tol=1e-6)
+
+# 최소 수량 미만
+a3 = st({"assetKey": "ETH", "amount": 10_000})
+check("ETH 최소 수량 미만", a3["minQtyOk"] is False, a3["minQtyOk"])
+
+# 단조성: 보상률·기간이 늘면 보상과 손익분기 하락률이 줄지 않는다
+prev_q = prev_h = -1
+for apr in (0, 2, 5, 10, 19.29, 50):
+    r = st({"assetKey": "ATOM", "amount": 1_000_000, "aprPct": apr})
+    check(f"보상률 {apr}% 보상 단조", r["netRewardQty"] >= prev_q - 1e-9, f"{r['netRewardQty']} < {prev_q}")
+    check(f"보상률 {apr}% 손익분기 단조", r["breakEvenDrop"] >= prev_h - 1e-12, f"{r['breakEvenDrop']} < {prev_h}")
+    prev_q, prev_h = r["netRewardQty"], r["breakEvenDrop"]
+prev_q = -1
+for m in (1, 3, 6, 12, 24, 60):
+    r = st({"assetKey": "SOL", "amount": 2_000_000, "months": m})
+    check(f"{m}개월 보상 단조", r["netRewardQty"] >= prev_q - 1e-12, f"{r['netRewardQty']} < {prev_q}")
+    prev_q = r["netRewardQty"]
+
+# 경계값·방어 (0·음수·범위 초과·빈 값)
+for bad in [{"assetKey": "ATOM", "amount": 0},
+            {"assetKey": "ATOM", "amount": -1_000_000},
+            {"assetKey": "ATOM", "amount": 1_000_000, "price": 0},
+            {"assetKey": "ATOM", "amount": 1_000_000, "aprPct": 0},
+            {"assetKey": "ATOM", "amount": 1_000_000, "aprPct": 1000},
+            {"assetKey": "ATOM", "amount": 1_000_000, "months": 0},
+            {"assetKey": "ATOM", "amount": 1_000_000, "months": 999},
+            {"assetKey": "ATOM", "amount": 1_000_000, "unstakeDays": -5},
+            {"assetKey": "ATOM", "amount": 1_000_000, "unstakeDays": 0},
+            {"assetKey": "ATOM", "amount": 1_000_000, "expectedDropPct": 100},
+            {"assetKey": "XXXX", "amount": 1_000_000},
+            {"assetKey": "ATOM", "amount": 1_000_000, "aprPct": ""},
+            {"assetKey": "ATOM", "amount": 1_000_000, "months": ""}]:
+    out = st(bad)
+    for key, v in out.items():
+        if isinstance(v, (int, float)) and not isinstance(v, bool):
+            check(f"스테이킹 {json.dumps(bad, ensure_ascii=False)} {key} 유한", math.isfinite(v), f"{key}={v}")
+    check(f"스테이킹 {json.dumps(bad, ensure_ascii=False)} 하락률 범위", 0 <= out["breakEvenDrop"] <= 1,
+          out["breakEvenDrop"])
+
+# 알 수 없는 코인은 기본 종목(ETH)으로, 빈 보상률은 종목 기본값으로
+check("미지 종목 → ETH", st({"assetKey": "XXXX", "amount": 1_000_000})["assetKey"] == "ETH", "")
+near("빈 보상률 → 기본값", st({"assetKey": "ATOM", "amount": 1_000_000, "aprPct": ""})["aprPct"], 19.29, tol=1e-9)
+check("대기 0일이면 하루당 0", st({"assetKey": "ATOM", "amount": 1_000_000, "unstakeDays": 0})["dailyAllowance"] == 0, "")
+
 # ── 결과 출력 ──────────────────────────────────────────────────
 print(f"quickjs 엔진 · 검사 {checks}건")
 print("\n연봉별 월 실수령 (식대 20만 · 부양가족 1명 · 자녀 0명)")

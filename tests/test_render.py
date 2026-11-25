@@ -17,6 +17,7 @@ PAGES = {
     "salary.html": ["assets/withholding-table.js", "assets/calc-core.js", "assets/ui.js", "assets/salary.js"],
     "rent-tax.html": ["assets/calc-core.js", "assets/ui.js", "assets/rent.js"],
     "card-tax.html": ["assets/calc-core.js", "assets/ui.js", "assets/card.js"],
+    "staking.html": ["assets/calc-core.js", "assets/ui.js", "assets/staking.js"],
     "crypto.html": ["assets/withholding-table.js", "assets/calc-core.js", "assets/ui.js", "assets/crypto.js"],
     "compound.html": ["assets/withholding-table.js", "assets/calc-core.js", "assets/ui.js", "assets/compound.js"],
 }
@@ -370,6 +371,67 @@ ctx5.eval('__set("credit-card", ""); __set("debit-cash", ""); __set("gross-salar
 assert_clean("card 빈 입력", text(ctx5, "deduction"))
 ctx5.eval('__set("gross-salary", "60000000"); __set("credit-card", "20000000"); __set("debit-cash", "5000000"); __set("dependents", ""); __set("children", "")')
 assert_clean("card 부양가족 빈값", text(ctx5, "deduction"))
+
+# ── 스테이킹 페이지 ─────────────────────────────────────────────
+ctx6, _ = run_page("staking.html", PAGES["staking.html"])
+be = html(ctx6, "breakeven")
+assert_clean("staking 손익분기", be)
+check("staking 기본 손익분기 17.5%", "17.5<small>%</small>" == be, be)
+check("staking 실수령 보상", text(ctx6, "reward") == "212,700원", text(ctx6, "reward"))
+check("staking 수수료", text(ctx6, "fee") == "23,633원", text(ctx6, "fee"))
+check("staking 실효 보상률", text(ctx6, "eff-annual") == "18.13%", text(ctx6, "eff-annual"))
+check("staking 순손익", text(ctx6, "net-pnl") == "+91,430원", text(ctx6, "net-pnl"))
+assert_clean("staking 결과 설명", text(ctx6, "breakeven-sub"))
+for note in ("min-note", "fee-note", "break-even-note", "eff-note",
+             "asset-caption", "period-caption", "drop-caption"):
+    assert_clean(f"staking {note}", text(ctx6, note))
+check("staking 최소 수량 안내", "0.05 ATOM" in text(ctx6, "min-note"), text(ctx6, "min-note"))
+detail = html(ctx6, "detail-rows")
+assert_clean("staking 상세 표", detail)
+check("staking 상세 9행", detail.count("<tr") == 9, f"{detail.count('<tr')}행")
+for label in ("스테이킹 수량", "연 추정 보상률", "검증 수수료 10%", "실수령 보상",
+              "손익분기 시세 하락률"):
+    check(f"staking 상세에 {label}", label in detail)
+assets = html(ctx6, "asset-rows")
+assert_clean("staking 6종 비교", assets)
+check("staking 6종 6행", assets.count("<tr") == 6, f"{assets.count('<tr')}행")
+for ticker in ("ETH", "SOL", "ATOM", "ADA", "POL", "CRO"):
+    check(f"staking 6종에 {ticker}", ticker in assets)
+periods = html(ctx6, "period-rows")
+assert_clean("staking 기간별", periods)
+check("staking 기간 5행", periods.count("<tr") == 5, f"{periods.count('<tr')}행")
+drops = html(ctx6, "drop-rows")
+assert_clean("staking 하락 시나리오", drops)
+check("staking 하락 6행", drops.count("<tr") == 6, f"{drops.count('<tr')}행")
+check("staking 하락 판정", "보상이 방어" in drops and "원금 손실" in drops, drops[:120])
+
+# 코인을 바꾸면 시세·보상률·대기일이 그 종목 값으로 바뀐다
+ctx6.eval("""document.getElementById('coin-chips')._children[0].fire('click')""")
+check("staking ETH 전환 현재가", text(ctx6, "reward") == "27,983원", text(ctx6, "reward"))
+check("staking ETH 손익분기", html(ctx6, "breakeven") == "2.7<small>%</small>", html(ctx6, "breakeven"))
+check("staking ETH 최소 수량", "0.02 ETH" in text(ctx6, "min-note"), text(ctx6, "min-note"))
+ctx6.eval("""document.getElementById('coin-chips')._children[3].fire('click')""")
+assert_clean("staking ADA 전환", text(ctx6, "reward"))
+check("staking ADA 최소 수량 미확인", "확인하지 못했습니다" in text(ctx6, "min-note"), text(ctx6, "min-note"))
+
+# 입력 변경·경계값
+ctx6.eval("""document.getElementById('coin-chips')._children[2].fire('click')""")
+ctx6.eval('__set("drop", "30")')
+check("staking 30% 하락 시 손실", text(ctx6, "net-pnl").startswith("−"), text(ctx6, "net-pnl"))
+ctx6.eval('__set("apr", "0")')
+assert_clean("staking 보상률 0", text(ctx6, "reward"))
+check("staking 보상률 0 손익분기", html(ctx6, "breakeven") == "0.0<small>%</small>", html(ctx6, "breakeven"))
+ctx6.eval('__set("apr", "19.29"); __set("price", "0")')
+assert_clean("staking 현재가 0", text(ctx6, "reward"))
+check("staking 현재가 0 안내", "현재가를 1원 이상" in text(ctx6, "min-note"), text(ctx6, "min-note"))
+ctx6.eval('__set("price", "1693"); __set("amount", "")')
+assert_clean("staking 금액 빈칸", text(ctx6, "reward"))
+ctx6.eval('__set("amount", "50"); __set("months", "")')
+assert_clean("staking 최소 수량 미만", text(ctx6, "reward"))
+check("staking 최소 미만 안내", "보다 적습니다" in text(ctx6, "min-note"), text(ctx6, "min-note"))
+ctx6.eval('__set("months", "60"); __set("unstake-days", "0")')
+assert_clean("staking 60개월·대기 0", text(ctx6, "reward"))
+assert_clean("staking 기간별 재계산", html(ctx6, "period-rows"))
 
 print(f"검사 {checks}건 · 페이지 {len(PAGES)}개 렌더링")
 if failures:
