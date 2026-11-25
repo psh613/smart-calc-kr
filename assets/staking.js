@@ -41,7 +41,15 @@
   function pctText(v, d) {
     var n = Number(v);
     if (!isFinite(n)) n = 0;
-    return (n * 100).toFixed(typeof d === 'number' ? d : 1) + '%';
+    return (n * 100).toFixed(typeof d === 'number' ? d : 1).replace('-', '−') + '%';
+  }
+
+  function minQtyText(v) {
+    var n = Math.abs(Number(v));
+    if (!isFinite(n)) return '';
+    if (n >= 10) return UI.dec(n, 0);
+    if (n >= 1) return UI.dec(n, 1);
+    return UI.dec(n, 2);
   }
 
   function signWon(v) {
@@ -85,8 +93,10 @@
       '<tr><td>스테이킹 수량</td><td>' + qtyText(r.qty, ticker) +
         '<span class="subnote">' + UI.won(r.amount) + ' ÷ ' + UI.won(r.price) + '</span></td></tr>',
       '<tr><td>연 추정 보상률</td><td>' + pctText(r.apr, 2) +
-        '<span class="subnote">수수료 공제 후 · ' + r.cycleDays + '일마다 보상 분배(복리)</span></td></tr>',
-      '<tr><td>보상이 붙는 기간</td><td>' + r.days + '일 중 ' + r.rewardDays + '일' +
+        '<span class="subnote">수수료 공제 후 · ' +
+        (r.cycleDays === 1 ? '매일' : r.cycleDays + '일마다') + ' 보상 분배(복리)</span></td></tr>',
+      '<tr><td>보상이 붙는 기간</td><td>' +
+        (r.rewardDays >= r.days ? r.days + '일 전체' : r.days + '일 중 ' + r.rewardDays + '일') +
         (r.firstRewardDelayDays > 0 ? '<span class="subnote">첫 보상까지 약 ' + r.firstRewardDelayDays + '일</span>' : '') +
         '</td></tr>',
       '<tr><td>수수료 전 보상</td><td>' + qtyText(r.grossRewardQty, ticker) +
@@ -114,7 +124,7 @@
         expectedDropPct: r.expectedDropPct
       });
       return '<tr><td>' + asset.name + '<span class="subnote">' + asset.ticker + ' · 최소 ' +
-        (asset.minQty === null ? '화면 확인' : UI.dec(asset.minQty, asset.minQty < 1 ? 2 : 0)) + '</span></td>' +
+        (asset.minQty === null ? '화면 확인' : minQtyText(asset.minQty)) + '</span></td>' +
         '<td>' + pctText(asset.apr, 2) + '</td>' +
         '<td>' + waitText(asset.unstakeDays) + '</td>' +
         '<td>' + UI.won(s.netRewardKrw) + '</td>' +
@@ -144,7 +154,7 @@
         months: r.months, unstakeDays: r.unstakeDays, expectedDropPct: d
       });
       var verdict = s.netPnlKrw > 0 ? '보상이 방어' : (s.netPnlKrw < 0 ? '원금 손실' : '본전');
-      return '<tr><td>−' + d + '%</td><td>' + UI.won(s.endPrice) + '</td><td>' + UI.won(s.valueAtExit) +
+      return '<tr><td>' + (d === 0 ? '0%' : '−' + d + '%') + '</td><td>' + UI.won(s.endPrice) + '</td><td>' + UI.won(s.valueAtExit) +
         '</td><td>' + signWon(s.netPnlKrw) + '<span class="subnote">' + pctText(s.netPnlRate, 2) +
         '</span></td><td>' + verdict + '</td></tr>';
     }).join('');
@@ -158,10 +168,10 @@
     } else if (r.minQty === null) {
       minNote = '에이다는 공개된 1차 출처에서 최소 신청 수량을 확인하지 못했습니다. 신청 화면에서 최소 수량을 확인한 뒤 입력하세요.';
     } else if (r.minQtyOk) {
-      minNote = '업비트 최소 신청 수량 ' + UI.dec(r.minQty, r.minQty < 1 ? 2 : 0) + ' ' + ticker +
+      minNote = '업비트 최소 신청 수량 ' + minQtyText(r.minQty) + ' ' + ticker +
         '(약 ' + UI.won(r.minAmount) + ') 이상이라 조건을 채웁니다.';
     } else {
-      minNote = '업비트 최소 신청 수량 ' + UI.dec(r.minQty, r.minQty < 1 ? 2 : 0) + ' ' + ticker +
+      minNote = '업비트 최소 신청 수량 ' + minQtyText(r.minQty) + ' ' + ticker +
         '(약 ' + UI.won(r.minAmount) + ')보다 적습니다. 이 수량으로는 신청이 되지 않습니다.';
     }
     UI.setText('min-note', minNote);
