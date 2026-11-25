@@ -126,7 +126,7 @@ python3 tests/test_calc.py                           # 공개 값과 다시 대�
 ## 검증
 
 ```bash
-python3 tests/test_calc.py    # 계산 로직 2,651건 (표 공개값·실수령·연말정산 공제·스테이킹·경계값)
+python3 tests/test_calc.py    # 계산 로직 2,652건 (표 공개값·실수령·연말정산 공제·스테이킹·경계값)
 python3 tests/test_pages.py   # 정적 점검 390건 (파일·id 결선·메타·사이트맵·404·상호 링크)
 python3 tests/test_render.py  # 렌더링 스모크 349건 (6개 페이지 JS 실행, NaN 검사)
 ```
